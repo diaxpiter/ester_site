@@ -1,0 +1,16 @@
+{
+  "name": "Ester — Admin",
+  "short_name": "Ester",
+  "description": "Administração do portal da Ester.",
+  "start_url": "portal.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "lang": "pt-PT",
+  "icons": [
+    { "src": "images/icons/icone_admin.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "images/icons/icone_admin.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

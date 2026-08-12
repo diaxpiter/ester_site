@@ -1,0 +1,19 @@
+# Firebase local cache
+.firebase/
+
+# Local scratch dirs
+tmp/
+output/
+
+# Vercel cron function - separate Node project
+vercel-cron/node_modules/
+vercel-cron/.vercel/
+
+# Client PII / admin-only reference docs (public repo - keep out by default)
+docs/
+
+# Local editor/agent settings
+.claude/settings.local.json
+
+# Misc crash artifacts
+*.stackdump

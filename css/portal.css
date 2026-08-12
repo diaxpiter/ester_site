@@ -1,0 +1,705 @@
+  :root{
+    --black:#0a0a0a;
+    --off-white:#f3f2ee;
+    --off-white-rgb:243,242,238;
+    --gray:#8c8c86;
+    --line:rgba(var(--off-white-rgb),0.16);
+    --white:#ffffff;
+    --red:#e5573f;
+  }
+  /* Light theme: the app defaults to dark (toggle in the nav, persisted in
+     localStorage). Swapping --black/--off-white's VALUES — not renaming them —
+     means every existing rule that already reads var(--black) as a surface and
+     var(--off-white) as text just inverts for free. --off-white-rgb drives every
+     hover/focus tint below via rgba(var(--off-white-rgb),n), so those flip too
+     (a "lighten toward off-white" tint on dark becomes "darken toward off-white"
+     on light — the same "highlight" effect either way). */
+  :root[data-theme="light"]{
+    --black:#f3f2ee;
+    --off-white:#0a0a0a;
+    --off-white-rgb:10,10,10;
+    --gray:#6b6b66;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--black);
+    color:var(--off-white);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    color-scheme:dark;
+    overflow-x:hidden;
+  }
+  h1,h2,h3{font-family:'League Spartan', sans-serif;font-weight:500;letter-spacing:-0.01em;}
+  a{color:inherit;}
+  ::selection{background:var(--off-white);color:var(--black);}
+
+  .wrap{max-width:920px;margin:0 auto;padding:0 32px;}
+
+  nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:26px 32px;
+    position:relative;
+  }
+  .nav-brand{
+    font-family:'League Spartan', sans-serif;font-style:italic;font-size:23px;
+    color:var(--off-white);text-decoration:none;letter-spacing:0.02em;line-height:1;
+  }
+  .nav-brand:hover{opacity:0.7;}
+  .nav-right{display:flex;align-items:center;gap:22px;font-size:13px;text-transform:uppercase;letter-spacing:0.1em;}
+  .nav-menu{display:flex;align-items:center;gap:22px;}
+  .nav-menu a{text-decoration:none;color:var(--gray);}
+  .nav-menu a:hover{color:var(--off-white);}
+  /* Hamburger (mobile only) */
+  .nav-hamburger{
+    display:none;flex-direction:column;justify-content:center;gap:5px;
+    width:42px;height:42px;padding:0;background:none;border:none;cursor:pointer;
+  }
+  .nav-hamburger span{display:block;width:22px;height:2px;background:var(--off-white);transition:transform .25s ease, opacity .25s ease;}
+  .nav-hamburger.is-open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+  .nav-hamburger.is-open span:nth-child(2){opacity:0;}
+  .nav-hamburger.is-open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+  .hidden{display:none !important;}
+
+  main.wrap{padding:60px 32px 120px;}
+
+  .eyebrow{
+    font-size:12px;text-transform:uppercase;letter-spacing:0.25em;color:var(--gray);margin-bottom:14px;
+  }
+
+  h1.page-title{
+    font-size:clamp(32px,5vw,52px);font-style:italic;font-weight:400;margin-bottom:14px;
+  }
+
+  .lede{color:var(--gray);font-size:15px;max-width:520px;line-height:1.6;margin-bottom:48px;}
+
+  /* forms */
+  .field{margin-bottom:20px;}
+  .field label{
+    display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:var(--gray);margin-bottom:8px;
+  }
+  .field input, .field textarea{
+    width:100%;background:transparent;border:1px solid var(--line);color:var(--off-white);
+    padding:14px 16px;font-family:'Inter',sans-serif;font-size:15px;border-radius:2px;
+    transition:border-color 0.25s ease;
+  }
+  .field input:focus, .field textarea:focus{outline:none;border-color:var(--off-white);box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.18);}
+  .field input.invalid{border-color:var(--red);}
+  .field select{
+    width:100%;background:transparent;border:1px solid var(--line);color:var(--off-white);
+    padding:14px 16px;font-family:'Inter',sans-serif;font-size:15px;border-radius:2px;
+    transition:border-color 0.25s ease;cursor:pointer;
+  }
+  .field select:focus{outline:none;border-color:var(--off-white);box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.18);}
+  .field select option, .field select optgroup{background:var(--black);color:var(--off-white);}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .field-row .field{min-width:0;}
+  @media (max-width:600px){.field-row{grid-template-columns:1fr;}}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:10px;
+    background:var(--off-white);color:var(--black);border:none;
+    padding:15px 30px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
+    text-transform:uppercase;letter-spacing:0.1em;border-radius:999px;cursor:pointer;
+    text-decoration:none;transition:opacity 0.25s ease;
+  }
+  .btn:hover{opacity:0.85;}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn-ghost{
+    background:transparent;color:var(--off-white);border:1px solid var(--line);
+  }
+  .btn-ghost:hover{background:rgba(var(--off-white-rgb),0.06);opacity:1;}
+
+  .icon-upload{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .icon-preview{
+    width:64px;height:64px;border-radius:14px;object-fit:cover;
+    background:var(--black);border:1px solid var(--line);flex:0 0 auto;
+  }
+  .icon-preview:not([src]),.icon-preview[src=""]{display:none;}
+  .icon-upload-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  .btn-mini{
+    display:inline-flex;align-items:center;justify-content:center;
+    background:transparent;color:var(--off-white);border:1px solid var(--line);
+    padding:9px 16px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
+    text-transform:uppercase;letter-spacing:0.08em;border-radius:999px;cursor:pointer;
+    text-decoration:none;transition:background 0.25s ease;
+  }
+  .btn-mini:hover{background:rgba(var(--off-white-rgb),0.06);}
+  .icon-hint{flex-basis:100%;font-size:12px;color:var(--gray);margin:0;}
+
+  .form-msg{
+    margin-top:18px;font-size:13px;padding:12px 16px;border-radius:4px;display:none;
+  }
+  .form-msg.show{display:block;}
+  .form-msg.error{background:rgba(229,87,63,0.12);color:#f0917f;border:1px solid rgba(229,87,63,0.3);}
+  .form-msg.ok{background:rgba(var(--off-white-rgb),0.07);color:var(--off-white);border:1px solid var(--line);}
+
+  /* cards / dashboard */
+  .round-links{display:flex;gap:16px;}
+  .round-btn{
+    width:56px;height:56px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);background:rgba(var(--off-white-rgb),0.04);
+    transition:background 0.25s ease, border-color 0.25s ease, transform 0.2s ease;
+  }
+  .round-btn:hover{background:rgba(var(--off-white-rgb),0.1);border-color:var(--off-white);transform:translateY(-2px);}
+  .round-btn img{width:26px;height:26px;object-fit:contain;display:block;}
+  .pay-block{margin-top:16px;padding-top:16px;border-top:1px solid var(--line);}
+  .pay-title{font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:var(--gray);margin-bottom:10px;}
+  .pay-line{color:var(--off-white);font-size:14px;line-height:1.5;margin-bottom:8px;}
+  .pay-line:last-child{margin-bottom:0;}
+  .pay-line .pay-idx{color:var(--gray);margin-right:4px;}
+  .pay-line .days{font-weight:600;color:var(--gray);}
+  .pay-line.upcoming .days{color:#5fbf7a;} /* green  — Faltam X dias */
+  .pay-line.today .days{color:#f0a24b;}    /* orange — Vence hoje */
+  .pay-line.overdue .days{color:#e5573f;}  /* red    — Em atraso */
+  .pay-line.paid{color:var(--gray);}       /* muted  — já pago */
+  .pay-line.paid .days{color:#5fbf7a;}
+  /* "Adicionar ao calendário" (.ics) — small button under an unpaid payment */
+  .cal-btn{
+    display:inline-flex;align-items:center;gap:5px;margin:6px 0 4px;
+    background:none;border:1px solid var(--line);color:var(--gray);
+    padding:5px 11px;border-radius:999px;font-family:'Inter',sans-serif;font-size:11px;cursor:pointer;
+    transition:border-color .2s ease, color .2s ease;
+  }
+  .cal-btn:hover{border-color:var(--off-white);color:var(--off-white);}
+  .cal-btn svg{width:12px;height:12px;flex:0 0 auto;}
+  /* client: scheduled recording dates block */
+  .rec-section{margin-top:26px;padding-top:24px;border-top:1px solid var(--line);}
+  .rec-section .pay-title{margin-bottom:12px;}
+  /* admin: recording-date inputs (one per gravação) */
+  .rec-date-row{display:flex;align-items:center;flex-wrap:wrap;gap:14px;padding:8px 0;}
+  .rec-cal-admin{flex:0 0 auto;}
+  .rec-date-num{font-size:13px;color:var(--gray);min-width:104px;flex:0 0 auto;}
+  .rec-date-row .date-field{flex:1 1 150px;min-width:0;max-width:240px;}
+
+  /* client: project carousel */
+  .proj-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:16px;}
+  .carousel-nav{display:flex;gap:8px;}
+  .carousel-nav.hidden{display:none;}
+  .carousel-arrow{
+    width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:none;
+    color:var(--off-white);cursor:pointer;font-size:16px;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    transition:background 0.2s ease, border-color 0.2s ease;
+  }
+  .carousel-arrow:hover{background:rgba(var(--off-white-rgb),0.06);border-color:var(--off-white);}
+  .carousel-arrow:disabled{opacity:0.35;cursor:not-allowed;}
+  .carousel-track{
+    display:flex;gap:2px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;max-width:100%;
+    /* Each card sizes to its own content. Without this, flex's default
+       align-items:stretch makes every card as tall as the tallest one, so a
+       card whose calendar is collapsed shows dead space where the expanded
+       calendar of a sibling card is. */
+    align-items:flex-start;
+  }
+  .carousel-track::-webkit-scrollbar{display:none;}
+  .carousel-track > .project-card{flex:0 0 100%;min-width:0;scroll-snap-align:start;margin-top:0;}
+  .carousel-dots{display:flex;gap:8px;justify-content:center;margin-top:18px;}
+  .carousel-dots:empty{display:none;}
+  .carousel-dots button{
+    width:8px;height:8px;border-radius:50%;border:none;background:var(--line);cursor:pointer;padding:0;
+    transition:background 0.2s ease;
+  }
+  .carousel-dots button.active{background:var(--off-white);}
+
+  /* client: project cards */
+  .project-card{border:1px solid var(--line);padding:30px;margin-top:2px;}
+  .project-card:first-child{margin-top:16px;}
+  .project-card > h3{font-size:22px;font-style:italic;font-weight:400;margin-bottom:22px;}
+  .proj-card-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  /* Client dashboard: greeting row with the always-visible contact button */
+  .dash-head-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .dash-contact-btn{white-space:nowrap;}
+  .dash-complete-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;}
+  .proj-card-head h3{font-size:22px;font-style:italic;font-weight:400;}
+  /* "Concluído" badge — shown when every workflow step is done */
+  .badge-done{
+    display:inline-flex;align-items:center;gap:6px;flex-shrink:0;
+    font-size:11px;text-transform:uppercase;letter-spacing:0.1em;
+    color:#5fbf7a;border:1px solid rgba(95,191,122,0.5);
+    background:rgba(95,191,122,0.08);padding:4px 12px;border-radius:999px;
+  }
+  .wf-done{margin-top:16px;color:#5fbf7a;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  /* admin: branched (3-month) workflow — "Comum" box + 3 month boxes, accordion
+     (only one expanded at a time via admin-clients.js's openWfGroup) */
+  .wf-hint{font-size:13px;color:var(--gray);margin-bottom:16px;}
+  .wf-common{margin-bottom:16px;}
+  .wf-months{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
+  @media(max-width:760px){.wf-months{grid-template-columns:1fr;}}
+  .wf-month{border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  /* Collapsible box (shared by month workflow boxes + recording-date boxes) */
+  .box-sum{
+    list-style:none;cursor:pointer;user-select:none;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:14px 16px;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:var(--gray);
+  }
+  .box-sum::-webkit-details-marker{display:none;}
+  .box-sum::after{content:"⌄";font-size:15px;line-height:1;color:var(--gray);transition:transform .2s ease;margin-left:4px;}
+  details[open] > .box-sum::after{transform:rotate(180deg);}
+  .box-sum:hover{color:var(--off-white);}
+  .box-sum > span:first-child{flex:1 1 auto;}
+  .box-count{font-size:11px;letter-spacing:0.06em;text-transform:none;color:var(--gray);}
+  .box-body{padding:2px 16px 14px;}
+  .rec-month{border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:12px;}
+  .wf-check{display:flex;align-items:flex-start;gap:10px;padding:7px 0;font-size:13px;color:var(--gray);cursor:pointer;line-height:1.35;}
+  .wf-check input{width:16px;height:16px;margin-top:1px;accent-color:#5fbf7a;flex:0 0 auto;cursor:pointer;}
+  .wf-check.on{color:var(--off-white);}
+  .proj-plan{color:var(--off-white);font-size:15px;margin-bottom:6px;}
+  .proj-period{color:var(--gray);font-size:13px;margin-bottom:6px;}
+
+  /* client: read-only per-project calendar (contract start / recordings / payments) */
+  .proj-progress{margin-top:26px;padding-top:24px;border-top:1px solid var(--line);}
+  .proj-progress .pay-title{margin-bottom:18px;}
+  /* collapsible <details> (.cal-details): closed by default, so it doesn't take up space on every visit */
+  summary.pay-title{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none;}
+  summary.pay-title::-webkit-details-marker{display:none;}
+  summary.pay-title::before{content:'▸';font-size:10px;color:var(--gray);transition:transform .15s ease;}
+  .cal-details[open] summary.pay-title::before{transform:rotate(90deg);}
+  .fin-yearbar.cal-nav span{font-size:15px;min-width:140px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;background:var(--line);}
+  .cal-dow{background:var(--black);color:var(--gray);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;text-align:center;padding:6px 0;}
+  .cal-cell{background:var(--black);min-height:50px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .cal-cell.empty{background:transparent;}
+  .cal-daynum{font-size:12px;color:var(--gray);}
+  .cal-cell.is-today .cal-daynum{color:var(--off-white);font-weight:600;}
+  .cal-cell.has-event .cal-daynum{color:var(--off-white);}
+  .cal-dots{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;}
+  .cal-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;}
+  .cal-dot-start{background:#5f9fd6;}
+  .cal-dot-recording{background:#b18cf0;}
+  .cal-dot-payment{background:#f0a24b;}
+  .cal-dot-paid{background:#5fbf7a;}
+  .cal-dot-delivery{background:#e5573f;}
+  .cal-legend{display:flex;flex-wrap:wrap;gap:14px 20px;margin-top:16px;font-size:12px;color:var(--gray);}
+  .cal-legend span{display:flex;align-items:center;gap:6px;}
+  @media(max-width:480px){.cal-cell{min-height:38px;padding:4px 2px;}.cal-daynum{font-size:11px;}}
+
+  /* admin: project list rows */
+  .project-row{
+    display:flex;justify-content:space-between;align-items:center;gap:14px;
+    border:1px solid var(--line);padding:16px 20px;margin-bottom:10px;cursor:pointer;
+    transition:background 0.2s ease;
+  }
+  .project-row:hover{background:rgba(var(--off-white-rgb),0.04);}
+  .project-row .pr-info{min-width:0;flex:1 1 auto;}
+  .project-row .pr-actions{display:flex;align-items:center;gap:14px;flex:0 0 auto;}
+  .project-row .pr-name{font-family:'League Spartan',sans-serif;font-style:italic;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .project-row .pr-sub{color:var(--gray);font-size:12px;margin-top:3px;}
+  .project-row .pr-go{color:var(--gray);font-size:13px;white-space:nowrap;}
+  .lead-next-row{display:flex;align-items:center;gap:10px;margin-top:10px;max-width:360px;}
+  .lead-next-check{width:17px;height:17px;flex:0 0 auto;accent-color:#5fbf7a;cursor:pointer;}
+  .lead-next-action{
+    width:100%;background:transparent;
+    border:1px solid var(--line);color:var(--off-white);padding:8px 12px;
+    font-family:'Inter',sans-serif;font-size:13px;border-radius:2px;transition:border-color 0.25s ease;
+  }
+  .lead-next-action::placeholder{color:var(--gray);}
+  .lead-next-action:focus{outline:none;border-color:var(--off-white);box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.18);}
+  .lead-next-action.is-done{color:var(--gray);text-decoration:line-through;}
+
+  /* admin: "A receber" monthly summary stat cards */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;}
+  .stat-card{
+    border:1px solid var(--line);border-radius:6px;padding:24px;cursor:pointer;
+    transition:background 0.2s ease,border-color 0.2s ease;
+  }
+  .stat-card:hover{background:rgba(var(--off-white-rgb),0.04);border-color:rgba(var(--off-white-rgb),0.32);}
+  .stat-num{font-family:'League Spartan',sans-serif;font-style:italic;font-size:34px;line-height:1.1;}
+  .stat-label{color:var(--gray);font-size:12px;text-transform:uppercase;letter-spacing:0.1em;margin-top:8px;}
+  .stat-sub{color:var(--gray);font-size:12px;margin-top:10px;line-height:1.4;}
+  .stat-card.is-alert{border-color:rgba(229,87,63,0.5);}
+  .stat-card.is-alert .stat-num{color:#e5573f;}
+  .stat-card.is-received .stat-num{color:#5fbf7a;}
+  .stat-card.is-total{border-color:rgba(var(--off-white-rgb),0.32);}
+  /* "A receber" monthly summary cards are informational, not links — no pointer/hover. */
+  #debtsMonthGrid .stat-card{cursor:default;}
+  #debtsMonthGrid .stat-card:hover{background:none;border-color:var(--line);}
+  #debtsMonthGrid .stat-card.is-alert:hover{border-color:rgba(229,87,63,0.5);}
+  #debtsMonthGrid .stat-card.is-total:hover{border-color:rgba(var(--off-white-rgb),0.32);}
+
+  .board-card-pay{font-size:12px;font-weight:600;margin-top:8px;}
+  .board-card-pay.upcoming{color:#5fbf7a;}
+  .board-card-pay.today{color:#f0a24b;}
+  .board-card-pay.overdue{color:#e5573f;}
+
+  /* admin: per-payment "Pago" toggles */
+  .pay-admin-list{margin:2px 0 22px;}
+  .pay-admin-title{font-size:12px;color:var(--gray);margin-bottom:8px;}
+  .pay-admin-row{
+    display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);
+    font-size:14px;color:var(--off-white);flex-wrap:wrap;
+  }
+  .pay-admin-row:last-child{border-bottom:none;}
+  .pay-admin-row.paid{color:var(--gray);}
+  .pay-admin-num{color:var(--gray);width:18px;flex-shrink:0;}
+  .pay-date-box, .rec-date-box, .rec-time-box{
+    background:transparent;border:1px solid var(--line);color:var(--off-white);
+    padding:9px 12px;border-radius:2px;font-family:'Inter',sans-serif;font-size:14px;
+  }
+  .pay-date-box:focus, .rec-date-box:focus, .rec-time-box:focus{outline:none;border-color:var(--off-white);box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.18);}
+  .rec-time-group{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
+  .rec-time-box{flex:0 0 auto;width:92px;color-scheme:dark;cursor:pointer;}
+  .rec-time-box option, .rec-time-box optgroup{background:var(--black);color:var(--off-white);}
+  .rec-time-sep{color:var(--gray);flex:0 0 auto;}
+  /* dd/mm/aaaa date field: text input (keyboard) + calendar button, ISO kept in dataset.iso */
+  .date-field{position:relative;display:block;}
+  .date-field .date-inp{width:100%;padding-right:42px;}
+  .date-field .date-cal{
+    position:absolute;top:0;right:0;height:100%;width:40px;
+    background:none;border:none;cursor:pointer;color:var(--gray);font-size:15px;padding:0;line-height:1;
+  }
+  .date-field .date-cal:hover{color:var(--off-white);}
+  .pay-admin-row .date-field{flex:1 1 150px;min-width:0;max-width:220px;}
+  .pay-amt-box{
+    background:transparent;border:1px solid var(--line);color:var(--off-white);width:96px;
+    padding:9px 12px;border-radius:2px;font-family:'Inter',sans-serif;font-size:14px;
+  }
+  .pay-amt-box:focus{outline:none;border-color:var(--off-white);box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.18);}
+  /* avulso/pontual payment rows: per-row description + remove button */
+  .pay-note-box{
+    background:transparent;border:1px solid var(--line);color:var(--off-white);
+    padding:9px 12px;border-radius:2px;font-family:'Inter',sans-serif;font-size:14px;
+    flex:1 1 160px;min-width:0;
+  }
+  .pay-note-box:focus{outline:none;border-color:var(--off-white);box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.18);}
+  .pay-remove-btn{
+    background:none;border:1px solid var(--line);color:var(--gray);width:30px;height:30px;
+    border-radius:2px;cursor:pointer;font-size:14px;line-height:1;flex:0 0 auto;
+  }
+  .pay-remove-btn:hover{color:#f0917f;border-color:rgba(229,87,63,0.4);}
+  .debt-remind{padding:8px 14px !important;font-size:11px !important;}
+  .pay-admin-paid{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--gray);margin-left:auto;cursor:pointer;white-space:nowrap;}
+  .pay-admin-paid input{width:16px;height:16px;accent-color:#5fbf7a;flex-shrink:0;cursor:pointer;}
+  .dash-line{display:block;line-height:1.9;}
+  .dash-key{color:var(--gray);}
+  .rec-count-row{display:flex;align-items:center;gap:14px;margin:10px 0;}
+  /* 3 month columns side by side (desktop), stacked full-width on mobile — same
+     breakpoint as .wf-months so both pieces of the monthly workflow UI match. */
+  .rec-count-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:10px 0;}
+  @media(max-width:760px){.rec-count-grid{grid-template-columns:1fr;}}
+  .rec-count-col{display:flex;flex-direction:column;gap:8px;}
+  .rec-count-mo{font-size:13px;color:var(--gray);}
+  /* 1/2/3 segmented control (replaces the old range slider for this small discrete choice) */
+  .rec-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:0 0 auto;}
+  .rec-seg-btn{
+    min-width:40px;min-height:38px;padding:6px 10px;
+    background:transparent;border:0;border-right:1px solid var(--line);
+    color:var(--gray);font-size:14px;font-weight:500;cursor:pointer;
+    transition:background .15s ease,color .15s ease;
+  }
+  .rec-seg-btn:last-child{border-right:0;}
+  .rec-seg-btn:hover{color:var(--off-white);background:rgba(var(--off-white-rgb),0.06);}
+  .rec-seg-btn.active{background:#5fbf7a;color:#0a0a0a;font-weight:700;cursor:default;}
+  .panel-empty{color:var(--gray);font-size:13px;font-style:italic;}
+
+  .status-pill{
+    display:inline-block;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;
+    padding:5px 12px;border-radius:999px;border:1px solid var(--line);color:var(--gray);
+  }
+  .status-pill.accepted{color:var(--off-white);border-color:var(--off-white);}
+
+  /* admin: sub-nav tab pair (Clientes/Leads, Financeiro/A receber) — groups
+     a secondary view behind its parent's top-level nav entry. */
+  .subnav-tabs{display:flex;gap:8px;margin:-4px 0 24px;}
+  .subnav-tab{
+    background:transparent;border:1px solid var(--line);color:var(--gray);
+    font-family:'Inter',sans-serif;font-size:13px;letter-spacing:0.04em;
+    padding:9px 18px;border-radius:999px;cursor:pointer;transition:background 0.2s ease,color 0.2s ease,border-color 0.2s ease;
+  }
+  .subnav-tab:hover{color:var(--off-white);border-color:rgba(var(--off-white-rgb),0.32);}
+  .subnav-tab.is-active{background:var(--off-white);color:var(--black);border-color:var(--off-white);}
+
+  /* admin: client toolbar (new-client button) */
+  .client-toolbar{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:22px;align-items:center;}
+
+  /* admin: collapsible client groups (Ativos above the main grid, Desativados
+     at the bottom) — reuses the .box-sum/.box-body pattern from the workflow
+     steppers, wrapped in a bordered box like .rec-month. */
+  .admin-collapsible{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:28px;}
+  .admin-collapsible-bottom{margin-top:28px;margin-bottom:0;}
+  .admin-collapsible .client-grid{margin-top:2px;}
+
+  /* Every top-level view breaks out of main.wrap's 920px cap so it uses the
+     full viewport width on desktop instead of squeezing into a narrow
+     centered column with big empty margins on wide screens. 100vw + negative
+     margin ignores the ancestor's max-width regardless of its own centering.
+     Targeting every section child (not a per-id list) means a newly added
+     view gets this automatically. */
+  main.wrap > section{max-width:none;width:100vw;position:relative;left:50%;margin-left:-50vw;padding:0 32px;box-sizing:border-box;}
+  /* Only the editors have the floating save button eating into the bottom
+     gap — cancel main.wrap's bottom padding there. Every other view keeps
+     it, so their content doesn't hug the viewport edge. */
+  #view-admin-edit, #view-admin-project{margin-bottom:-120px;}
+
+  /* admin: client grid — rounded-square summary tiles, one per client */
+  .client-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:18px;}
+  .client-card{
+    min-height:170px;border:1px solid var(--line);border-radius:20px;padding:20px;
+    display:flex;flex-direction:column;cursor:pointer;background:rgba(var(--off-white-rgb),0.02);
+    transition:background 0.2s ease,border-color 0.2s ease;overflow:hidden;
+  }
+  .client-card:hover{background:rgba(var(--off-white-rgb),0.05);border-color:rgba(var(--off-white-rgb),0.32);}
+  .client-card[data-urgency="overdue"]{border-color:rgba(229,87,63,0.5);}
+  .client-card[data-urgency="today"]{border-color:rgba(240,162,75,0.5);}
+  .client-avatar{
+    width:44px;height:44px;border-radius:14px;border:1px solid var(--line);flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+    font-family:'League Spartan',sans-serif;font-style:italic;font-size:16px;
+    background:rgba(var(--off-white-rgb),0.03);
+  }
+  .client-avatar img{width:100%;height:100%;object-fit:cover;}
+  .client-card-body{margin-top:14px;min-width:0;}
+  .client-card .name{font-family:'League Spartan', sans-serif;font-style:italic;font-size:16px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .client-card .email{color:var(--gray);font-size:11px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .client-card-foot{margin-top:auto;display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding-top:10px;}
+  .client-card-foot .board-card-pay{margin-top:0;}
+
+  .back-link{font-size:13px;color:var(--gray);text-decoration:none;display:inline-block;margin-bottom:30px;}
+  .back-link:hover{color:var(--off-white);}
+
+  .loading-dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gray);
+    animation:pulse 1s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:0.3;}50%{opacity:1;}}
+
+  /* magic link box (admin) */
+  .link-box{
+    display:flex;gap:12px;align-items:stretch;margin-bottom:8px;
+  }
+  @media (max-width:600px){.link-box{flex-direction:column;}}
+  .link-box input{
+    flex:1;background:transparent;border:1px solid var(--line);color:var(--off-white);
+    padding:14px 16px;font-family:'Inter',sans-serif;font-size:14px;border-radius:2px;
+  }
+  .section-divider{margin-top:56px;}
+  .section-divider h3{font-size:20px;font-style:italic;font-weight:400;margin-bottom:20px;}
+
+  /* project workflow — sequential vertical stepper (admin) */
+  .stepper{display:flex;flex-direction:column;margin-top:8px;}
+  .step{display:flex;gap:16px;align-items:flex-start;}
+  .step-marker{position:relative;flex-shrink:0;width:20px;display:flex;justify-content:center;}
+  .step-dot{
+    width:18px;height:18px;border-radius:50%;border:2px solid var(--line);background:var(--black);
+    z-index:1;margin-top:2px;display:flex;align-items:center;justify-content:center;
+    font-size:10px;line-height:1;color:var(--black);
+  }
+  .step:not(:last-child) .step-marker::after{
+    content:"";position:absolute;top:18px;bottom:-4px;left:50%;transform:translateX(-50%);
+    width:2px;background:var(--line);
+  }
+  .step-label{padding-bottom:22px;font-size:14px;color:var(--gray);line-height:1.45;}
+  .step.done{cursor:pointer;}
+  .step.done .step-dot{background:#5fbf7a;border-color:#5fbf7a;}
+  .step.done .step-marker::after{background:#5fbf7a;}
+  .step.done .step-label{color:var(--off-white);}
+  .step.current{cursor:pointer;}
+  .step.current .step-dot{border-color:var(--off-white);box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.16);}
+  .step.current .step-label{color:var(--off-white);font-weight:500;}
+  .step.locked{cursor:not-allowed;}
+  .step.locked .step-label{opacity:0.5;}
+  input[type="range"]{width:100%;accent-color:#5fbf7a;cursor:pointer;margin-top:6px;}
+
+  /* finance */
+  .fin-yearbar{display:flex;align-items:center;gap:18px;margin-bottom:8px;}
+  .fin-yearbar span{font-family:'League Spartan',sans-serif;font-size:24px;min-width:80px;text-align:center;}
+  .fin-yearbar button{
+    background:none;border:1px solid var(--line);color:var(--off-white);width:38px;height:38px;
+    border-radius:999px;cursor:pointer;font-size:18px;line-height:1;
+    transition:background 0.2s ease, border-color 0.2s ease;
+  }
+  .fin-yearbar button:hover{background:rgba(var(--off-white-rgb),0.06);border-color:var(--off-white);}
+
+  .fin-filters{
+    display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr auto;gap:14px;align-items:end;margin-bottom:18px;
+  }
+  /* min-width:0 lets the date inputs shrink to their grid track instead of
+     overflowing into the neighbouring field (e.g. "Até" over "Recibo"). */
+  .fin-filters .field{margin-bottom:0;min-width:0;}
+  .fin-filters .field input,.fin-filters .field select{min-width:0;}
+  .fin-filters .btn{padding:14px 22px;white-space:nowrap;}
+  @media(max-width:700px){.fin-filters{grid-template-columns:1fr 1fr;}.fin-filters .btn{grid-column:1 / -1;}}
+  .fin-subtotal{font-size:13px;color:var(--gray);margin-bottom:16px;}
+  .fin-subtotal strong{color:var(--off-white);font-weight:600;}
+
+  /* Ledger paginated 10/page: pages sit side by side and scroll horizontally. */
+  .fin-scroll{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+  .fin-scroll::-webkit-scrollbar{height:0;}
+  .fin-page{flex:0 0 100%;min-width:100%;scroll-snap-align:start;}
+  .fin-dots{display:flex;justify-content:center;gap:8px;margin-top:16px;}
+  .fin-dots button{
+    width:8px;height:8px;padding:0;border-radius:50%;cursor:pointer;
+    border:1px solid var(--line);background:transparent;transition:background .2s ease,border-color .2s ease;
+  }
+  .fin-dots button.on{background:var(--off-white);border-color:var(--off-white);}
+  .fin-ledger-row{
+    display:grid;grid-template-columns:96px 1fr 110px auto;gap:14px;align-items:center;
+    padding:14px 0;border-bottom:1px solid var(--line);
+  }
+  .fin-ledger-row:last-child{border-bottom:none;}
+  .fin-date{color:var(--gray);font-size:13px;}
+  .fin-cli{color:var(--off-white);font-size:14px;}
+  .fin-note{color:var(--gray);font-size:12px;}
+  .fin-receipt-tag{font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray);}
+  .fin-receipt-tag.yes{color:#5fbf7a;}
+  .fin-amt{text-align:right;font-weight:600;font-size:15px;}
+  .fin-actions{display:flex;gap:10px;}
+  .fin-edit,.fin-del{background:none;border:none;color:var(--gray);cursor:pointer;font-size:15px;padding:0;}
+  .fin-edit:hover{color:var(--off-white);}
+  .fin-del:hover{color:var(--red);}
+  @media(max-width:600px){
+    .fin-ledger-row{grid-template-columns:1fr auto auto;}
+    .fin-date{grid-column:1 / -1;}
+    /* Bigger, finger-friendly edit/remove targets on phones. */
+    .fin-actions{gap:6px;}
+    .fin-edit,.fin-del{font-size:20px;padding:8px;line-height:1;}
+  }
+
+  .fin-total{font-size:15px;color:var(--gray);margin:6px 0 24px;}
+  .fin-total strong{color:var(--off-white);font-size:24px;font-family:'League Spartan',sans-serif;margin-left:6px;}
+  .fin-total-sub{display:block;font-size:13px;color:var(--gray);margin-top:8px;}
+  .fin-total-sub strong{font-size:16px;color:#5fbf7a;}
+  .q-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line);margin-top:6px;}
+  @media(max-width:700px){.q-grid{grid-template-columns:1fr;}}
+  /* collapsed-by-default "Meses anteriores" <details>: past SS months out of the way, current/upcoming stay visible */
+  .q-past-details{margin:6px 0 16px;}
+  .q-past-details summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;user-select:none;font-size:13px;color:var(--gray);padding:8px 0;}
+  .q-past-details summary::-webkit-details-marker{display:none;}
+  .q-past-details summary::before{content:'▸';font-size:10px;transition:transform .15s ease;}
+  .q-past-details[open] summary::before{transform:rotate(90deg);}
+  .q-past-details .q-grid{margin-top:10px;}
+  .q-card{background:var(--black);padding:26px;}
+  .q-card h4{font-family:'League Spartan',sans-serif;font-weight:500;font-size:16px;margin-bottom:14px;}
+  .q-line{display:flex;justify-content:space-between;font-size:13px;color:var(--gray);}
+  .q-line strong{color:var(--off-white);font-weight:600;}
+  .q-ss{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--gray);line-height:1.6;}
+  .q-ss strong{color:#f0a24b;font-weight:600;}
+
+  /* confirmation modal */
+  .modal-overlay{
+    position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.62);padding:24px;animation:modalFade 0.18s ease;
+  }
+  @keyframes modalFade{from{opacity:0;}to{opacity:1;}}
+  .modal-box{
+    background:var(--black);border:1px solid var(--line);border-radius:6px;
+    max-width:420px;width:100%;padding:32px;
+  }
+  .modal-box h3{font-size:22px;font-style:italic;font-weight:400;margin-bottom:12px;}
+  .modal-box p{color:var(--gray);font-size:14px;line-height:1.6;margin-bottom:28px;}
+  .modal-actions{display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;}
+  .btn-danger{background:var(--red);color:var(--off-white);}
+  .btn-danger:hover{opacity:0.85;}
+  /* Confirm dialogs can be triggered from inside another already-open modal
+     (e.g. "Apagar cartão" from the card modal) — without a higher z-index it
+     paints BEHIND that modal (later DOM order wins at equal z-index) and looks
+     like the button does nothing. */
+  #confirmModal{z-index:1300;}
+
+  /* light/dark theme toggle (nav) */
+  .theme-toggle{
+    background:none;border:1px solid var(--line);color:var(--off-white);
+    width:34px;height:34px;border-radius:50%;font-size:15px;line-height:1;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    flex:0 0 auto;transition:border-color 0.2s ease,background 0.2s ease;
+  }
+  .theme-toggle:hover{background:rgba(var(--off-white-rgb),0.08);border-color:var(--off-white);}
+
+  /* admin "due soon / overdue" banner */
+  .due-banner{
+    border:1px solid rgba(240,162,75,0.5);background:rgba(240,162,75,0.1);
+    border-radius:6px;padding:16px 18px;margin-bottom:28px;
+  }
+  .due-banner h4{font-family:'League Spartan',sans-serif;font-weight:500;font-size:15px;margin-bottom:10px;color:#f0a24b;}
+  .due-banner ul{list-style:none;margin:0;}
+  .due-banner li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 0;font-size:13px;color:var(--off-white);flex-wrap:wrap;border-top:1px solid var(--line);}
+  .due-banner li:first-child{border-top:none;}
+  .due-banner .db-more{color:var(--gray);justify-content:flex-start;}
+  .due-banner .days.overdue{color:#e5573f;}
+  .due-banner .days.today{color:#f0a24b;}
+  .due-banner .days.upcoming{color:#5fbf7a;}
+  .due-banner .db-dismiss{background:none;border:none;color:var(--gray);cursor:pointer;font-size:12px;text-decoration:underline;margin-top:10px;padding:0;}
+  .due-banner .db-dismiss:hover{color:var(--off-white);}
+
+  /* floating save button — always reachable while editing a client/project */
+  .floating-save{
+    position:fixed;right:24px;bottom:24px;z-index:500;
+    display:none;box-shadow:0 8px 28px rgba(0,0,0,0.45);
+  }
+  .floating-save.show{display:inline-flex;}
+
+  /* toast confirmation (shown near the top, where you're editing) */
+  .toast{
+    position:fixed;left:50%;top:86px;z-index:1200;
+    transform:translateX(-50%) translateY(-16px);
+    background:var(--off-white);color:var(--black);
+    padding:12px 22px;border-radius:999px;font-size:13px;font-weight:600;
+    opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;
+    box-shadow:0 8px 28px rgba(0,0,0,0.45);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.error{background:var(--red);color:var(--off-white);}
+
+  /* ===== MOBILE (small phones) ===== */
+  @media (max-width:600px){
+    nav{padding:14px 16px;justify-content:space-between;}
+    .nav-brand{font-size:20px;}
+    /* Admin menu collapses into a hamburger dropdown pinned to the top-right. */
+    .nav-hamburger{display:flex;}
+    .nav-menu{
+      display:none;position:absolute;top:calc(100% - 4px);right:16px;z-index:60;
+      flex-direction:column;align-items:stretch;gap:0;
+      background:var(--black);border:1px solid var(--line);border-radius:10px;
+      min-width:190px;padding:6px;box-shadow:0 14px 34px rgba(0,0,0,0.55);
+    }
+    .nav-menu.open{display:flex;}
+    .nav-menu a{padding:12px 14px;border-radius:6px;font-size:13px;letter-spacing:0.05em;}
+    .nav-menu a:hover{background:rgba(var(--off-white-rgb),0.06);color:var(--off-white);}
+    .wrap{padding:0 18px;}
+    main.wrap{padding:44px 18px 90px;}
+    main.wrap > section{padding:0 18px;}
+    #view-admin-edit, #view-admin-project{margin-bottom:-90px;}
+    h1.page-title{font-size:clamp(28px,8vw,40px);}
+    .lede{margin-bottom:34px;}
+    .project-card{padding:22px 18px;}
+    .project-card:first-child{margin-top:12px;}
+    /* Two client cards per row instead of the desktop auto-fill sizing, which
+       only fits one column at phone widths. */
+    .client-grid{grid-template-columns:1fr 1fr;gap:10px;}
+    .client-card{min-height:0;padding:14px;}
+    .modal-box{padding:26px 22px;}
+    .section-divider{margin-top:44px;}
+    /* Payment rows: a tidy 2-row grid so date/amount/"Pago" never get squeezed.
+       Number spans both rows on the left; date on top; amount + "Pago" below it. */
+    .pay-admin-row{
+      display:grid;align-items:center;gap:10px 12px;padding:14px 0;
+      grid-template-columns:auto 1fr auto;
+      grid-template-areas:"num date date" "num amt paid";
+    }
+    .pay-admin-num{grid-area:num;align-self:center;}
+    .pay-admin-row .date-field{grid-area:date;max-width:none;}
+    .pay-date-box{width:100%;}
+    .pay-amt-box{grid-area:amt;width:100%;}
+    .pay-admin-paid{grid-area:paid;margin-left:0;}
+    /* Avulso/pontual rows add a description line + a remove button. */
+    .pay-admin-row.is-pontual{
+      grid-template-areas:"num date remove" "num note note" "num amt paid";
+    }
+    .pay-admin-row.is-pontual .pay-note-box{grid-area:note;width:100%;}
+    .pay-admin-row.is-pontual .pay-remove-btn{grid-area:remove;justify-self:end;}
+    /* Recording rows: label on its own line, then date + time dropdowns wrap below. */
+    .rec-date-row{flex-wrap:wrap;gap:10px 12px;}
+    .rec-date-row .rec-date-num{flex:1 1 100%;min-width:0;}
+    .rec-date-row .date-field{flex:1 1 130px;max-width:none;}
+    .rec-time-group{flex:1 1 auto;}
+    .fin-yearbar span{font-size:20px;min-width:64px;}
+    /* Bigger, finger-friendly hit targets for the small icon-only controls —
+       these read fine on a mouse but are too small to tap reliably on a phone. */
+    .theme-toggle{width:40px;height:40px;}
+    .pay-remove-btn{width:40px;height:40px;font-size:16px;}
+  }
+

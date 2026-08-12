@@ -1,0 +1,58 @@
+rules_version = '2';
+
+// Ester client portal — access model
+//   • A client reaches their own space via a personal link: portal.html?c=<docId>.
+//     The random doc id IS the secret, so a single-doc read (get) is public.
+//   • Only the authenticated admin may LIST every client or WRITE any client doc.
+//   • Financial data (income ledger) is fully private — admin-only read and write.
+//
+// Publish from the Firebase console (Firestore Database → Rules) or via the CLI:
+//   firebase deploy --only firestore:rules
+//
+// After changing ADMIN_EMAIL here, keep it in sync with portal.html.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.token.email == 'contatoestephanie@gmail.com';
+    }
+
+    match /clients/{clientId} {
+      // Client opening their personal link — read exactly one doc by id.
+      allow get: if true;
+
+      // Enumerating all clients is admin-only (keeps client data from being scraped).
+      allow list: if isAdmin();
+
+      // Creating / deleting client spaces is admin-only.
+      allow create, delete: if isAdmin();
+
+      // Editing is admin-only, EXCEPT a client may submit/update their own
+      // testimonial via their personal link — the doc id is already the secret
+      // (same trust model as the public `get` above), and this is restricted
+      // to touching only the `testimonial` field so nothing else is exposed.
+      allow update: if isAdmin()
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['testimonial']);
+    }
+
+    match /income/{entryId} {
+      // Financial records are private to the admin — no public access at all.
+      allow read, write: if isAdmin();
+    }
+
+    match /leads/{leadId} {
+      // Prospective clients who showed interest but haven't contracted yet.
+      // No portal/magic-link access exists for a lead, so unlike `clients`
+      // there's no public `get` — fully private to the admin.
+      allow read, write: if isAdmin();
+    }
+
+    match /dashboard/{docId} {
+      // Admin-only scratch space for the Início page: the daily routine and
+      // to-do checklists. No client-facing use, so fully private to the admin.
+      allow read, write: if isAdmin();
+    }
+  }
+}
