@@ -474,6 +474,49 @@
       <div id="finLedger"></div>
     </div>
 
+    <!-- Register / edit expense -->
+    <div class="section-divider">
+      <h3 id="expFormTitle">Registar despesa</h3>
+      <div class="field-row">
+        <div class="field">
+          <label>Data da despesa</label>
+          <div class="date-field"><input type="text" id="expDate" class="date-inp" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">📅</button></div>
+        </div>
+        <div class="field">
+          <label>Valor (€)</label>
+          <input type="number" id="expAmount" min="0" step="0.01" inputmode="decimal" placeholder="0,00">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Categoria</label>
+          <select id="expCategory">
+            <option value="equipamento">Equipamento</option>
+            <option value="software">Software</option>
+            <option value="transporte">Transporte</option>
+            <option value="seguros">Seguros</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Descrição</label>
+          <input type="text" id="expNote" placeholder="Ex.: Assinatura Adobe CC">
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn" id="expAddBtn">Adicionar despesa</button>
+        <button class="btn btn-ghost hidden" id="expCancelEditBtn">Cancelar edição</button>
+      </div>
+      <div class="form-msg" id="expMsg"></div>
+    </div>
+
+    <!-- Expense ledger -->
+    <div class="section-divider">
+      <h3>Despesas</h3>
+      <button class="btn btn-ghost" id="expExportBtn" style="margin-bottom:16px;">Exportar CSV</button>
+      <div id="expLedger"></div>
+    </div>
+
     <!-- Summary + Social Security -->
     <div class="section-divider">
       <h3>Resumo &amp; Segurança Social</h3>
@@ -483,6 +526,7 @@
         <button id="finYearNext" aria-label="Próximo ano">›</button>
       </div>
       <p class="fin-total" id="finTotal"></p>
+      <p class="fin-total" id="finProfitTotal"></p>
       <details class="q-past-details hidden" id="finPastMonths">
         <summary id="finPastSummary">Meses anteriores</summary>
         <div class="q-grid" id="finPastGrid"></div>

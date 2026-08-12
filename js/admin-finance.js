@@ -57,16 +57,25 @@ export async function deleteClientIncome(clientId){
 
 let finYear = null;
 let finAllEntries = [];
+let finAllExpenses = [];
 
 let finEditId = null; // id of the income entry being edited, or null when adding
+let expEditId = null; // id of the expense entry being edited, or null when adding
+
+const EXPENSE_CATEGORY_LABELS = {
+  equipamento: 'Equipamento', software: 'Software', transporte: 'Transporte',
+  seguros: 'Seguros', outro: 'Outro'
+};
 
 export async function loadFinance(){
   setAdminHash('financeiro');
   if(finYear === null) finYear = new Date().getFullYear();
   resetIncomeForm();
+  resetExpenseForm();
   show('view-admin-finance');
   await populateFinClients();
   await reloadIncome();
+  await reloadExpenses();
 }
 
 // Fill both the add-form client select and the filter client select.
@@ -96,9 +105,20 @@ async function reloadIncome(){
   renderFinance();
 }
 
+async function reloadExpenses(){
+  try{
+    const snap = await getDocs(collection(db, "expenses"));
+    finAllExpenses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }catch(err){
+    finAllExpenses = [];
+  }
+  renderFinance();
+}
+
 function renderFinance(){
   document.getElementById('finYearLabel').textContent = finYear;
   renderLedger();
+  renderExpenseLedger();
   renderSummary();
 }
 
@@ -141,21 +161,17 @@ function buildLedgerRow(e){
   row.querySelector('.fin-del').addEventListener('click', () => deleteIncome(e.id));
   return row;
 }
-function renderLedger(){
-  const entries = getFilteredEntries();
-  const el = document.getElementById('finLedger');
-  const sum = entries.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  document.getElementById('finFilterTotal').innerHTML =
-    `${entries.length} receita(s) · total <strong>${money.format(sum)}</strong>`;
+// Shared by the income and expense ledgers: up to FIN_PAGE_SIZE rows per
+// page, extra pages sit side by side and scroll horizontally with dots.
+function renderPagedRows(el, entries, buildRow, emptyMsg){
   el.innerHTML = '';
   if(entries.length === 0){
-    el.innerHTML = '<p class="panel-empty">Nenhuma receita corresponde aos filtros.</p>';
+    el.innerHTML = `<p class="panel-empty">${emptyMsg}</p>`;
     return;
   }
-  // Up to 10 per page; extra pages sit side by side and scroll horizontally.
   const pageCount = Math.ceil(entries.length / FIN_PAGE_SIZE);
   if(pageCount === 1){
-    entries.forEach(e => el.appendChild(buildLedgerRow(e)));
+    entries.forEach(e => el.appendChild(buildRow(e)));
     return;
   }
   const scroll = document.createElement('div');
@@ -163,7 +179,7 @@ function renderLedger(){
   for(let p = 0; p < pageCount; p++){
     const page = document.createElement('div');
     page.className = 'fin-page';
-    entries.slice(p * FIN_PAGE_SIZE, (p + 1) * FIN_PAGE_SIZE).forEach(e => page.appendChild(buildLedgerRow(e)));
+    entries.slice(p * FIN_PAGE_SIZE, (p + 1) * FIN_PAGE_SIZE).forEach(e => page.appendChild(buildRow(e)));
     scroll.appendChild(page);
   }
   el.appendChild(scroll);
@@ -183,6 +199,40 @@ function renderLedger(){
     const active = Math.round(scroll.scrollLeft / scroll.clientWidth);
     [...dots.children].forEach((d, i) => d.classList.toggle('on', i === active));
   }, { passive: true });
+}
+function renderLedger(){
+  const entries = getFilteredEntries();
+  const sum = entries.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  document.getElementById('finFilterTotal').innerHTML =
+    `${entries.length} receita(s) · total <strong>${money.format(sum)}</strong>`;
+  renderPagedRows(document.getElementById('finLedger'), entries, buildLedgerRow, 'Nenhuma receita corresponde aos filtros.');
+}
+
+function buildExpenseRow(e){
+  const row = document.createElement('div');
+  row.className = 'fin-ledger-row';
+  row.innerHTML = `
+    <span class="fin-date">${formatDatePt(e.date)}</span>
+    <span>
+      <span class="fin-cli">${escapeHtml(EXPENSE_CATEGORY_LABELS[e.category] || 'Outro')}</span>
+      ${e.note ? `<br><span class="fin-note">${escapeHtml(e.note)}</span>` : ''}
+    </span>
+    <span class="fin-amt neg">− ${money.format(Number(e.amount) || 0)}</span>
+    <span class="fin-actions">
+      <button type="button" class="fin-edit" title="Editar" aria-label="Editar despesa">✎</button>
+      <button type="button" class="fin-del" title="Remover" aria-label="Remover despesa">✕</button>
+    </span>
+  `;
+  row.querySelector('.fin-edit').addEventListener('click', () => startEditExpense(e));
+  row.querySelector('.fin-del').addEventListener('click', () => deleteExpense(e.id));
+  return row;
+}
+function getYearExpenses(){
+  return finAllExpenses.filter(e => e.date && Number(e.date.slice(0, 4)) === finYear);
+}
+function renderExpenseLedger(){
+  const entries = getYearExpenses().sort((a, b) => (a.date < b.date ? 1 : -1));
+  renderPagedRows(document.getElementById('expLedger'), entries, buildExpenseRow, 'Nenhuma despesa registada neste ano.');
 }
 
 const MONTH_NAMES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -245,6 +295,15 @@ function renderSummary(){
   document.getElementById('finTotal').innerHTML =
     `Receita total de ${finYear}: <strong>${money.format(total)}</strong>` +
     `<span class="fin-total-sub">Com recibo emitido (base da Segurança Social): <strong>${money.format(totalIssued)}</strong></span>`;
+
+  // Profit = gross income (all, receipted or not) minus this year's expenses.
+  // Kept separate from the Segurança Social base above, which is intentionally
+  // receipted-income-only and unaffected by expenses.
+  const totalExpenses = getYearExpenses().reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const profit = total - totalExpenses;
+  document.getElementById('finProfitTotal').innerHTML =
+    `Despesas de ${finYear}: <strong>${money.format(totalExpenses)}</strong>` +
+    `<span class="fin-total-sub">Lucro de ${finYear}: <strong class="${profit < 0 ? 'neg' : ''}">${money.format(profit)}</strong></span>`;
 
   const grid = document.getElementById('finQuarters');
   const pastGrid = document.getElementById('finPastGrid');
@@ -336,6 +395,94 @@ async function deleteIncome(id){
     await reloadIncome();
   }catch(err){ /* no-op */ }
 }
+
+function resetExpenseForm(){
+  expEditId = null;
+  setISO(document.getElementById('expDate'), todayIso());
+  document.getElementById('expAmount').value = '';
+  document.getElementById('expCategory').value = 'equipamento';
+  document.getElementById('expNote').value = '';
+  document.getElementById('expFormTitle').textContent = 'Registar despesa';
+  document.getElementById('expAddBtn').textContent = 'Adicionar despesa';
+  document.getElementById('expCancelEditBtn').classList.add('hidden');
+  document.getElementById('expMsg').className = 'form-msg';
+}
+function startEditExpense(e){
+  expEditId = e.id;
+  setISO(document.getElementById('expDate'), e.date || '');
+  document.getElementById('expAmount').value = (e.amount ?? '');
+  document.getElementById('expCategory').value = e.category || 'outro';
+  document.getElementById('expNote').value = e.note || '';
+  document.getElementById('expFormTitle').textContent = 'Editar despesa';
+  document.getElementById('expAddBtn').textContent = 'Guardar alterações';
+  document.getElementById('expCancelEditBtn').classList.remove('hidden');
+  document.getElementById('expMsg').className = 'form-msg';
+  document.getElementById('expFormTitle').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+document.getElementById('expCancelEditBtn').addEventListener('click', resetExpenseForm);
+
+async function deleteExpense(id){
+  const ok = await askConfirm({
+    title: 'Eliminar despesa',
+    message: 'Esta ação não pode ser desfeita. Deseja eliminar esta despesa?',
+    confirmText: 'Deletar',
+    cancelText: 'Cancelar'
+  });
+  if(!ok) return;
+  try{
+    await deleteDoc(doc(db, "expenses", id));
+    if(expEditId === id) resetExpenseForm();
+    await reloadExpenses();
+  }catch(err){ /* no-op */ }
+}
+
+document.getElementById('expExportBtn').addEventListener('click', () => {
+  const entries = getYearExpenses();
+  if(entries.length === 0){ msg(document.getElementById('expMsg'), "Nada para exportar neste ano.", "error"); return; }
+  const rows = [['Data', 'Categoria', 'Descrição', 'Valor (EUR)']];
+  entries.forEach(e => rows.push([
+    formatDatePt(e.date),
+    EXPENSE_CATEGORY_LABELS[e.category] || 'Outro',
+    (e.note || '').replace(/"/g, '""'),
+    String(Number(e.amount) || 0).replace('.', ',')
+  ]));
+  const csv = String.fromCharCode(0xFEFF) + rows.map(r => r.map(c => `"${c}"`).join(';')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `despesas-ester-${finYear}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('expAddBtn').addEventListener('click', async () => {
+  const msgEl = document.getElementById('expMsg');
+  const date = getISO(document.getElementById('expDate'));
+  const amount = parseFloat(document.getElementById('expAmount').value);
+  const category = document.getElementById('expCategory').value;
+  const note = document.getElementById('expNote').value.trim();
+  if(!date || isNaN(amount) || amount <= 0){
+    msg(msgEl, "Informe uma data e um valor válido.", "error");
+    return;
+  }
+  const payload = { date, amount, category, note };
+  try{
+    if(expEditId){
+      await updateDoc(doc(db, "expenses", expEditId), payload);
+      resetExpenseForm();
+      msg(msgEl, "Despesa atualizada.", "ok");
+    } else {
+      payload.createdAt = serverTimestamp();
+      await addDoc(collection(db, "expenses"), payload);
+      finYear = Number(date.slice(0, 4)); // reflect the new entry in the summary year
+      resetExpenseForm();
+      msg(msgEl, "Despesa adicionada.", "ok");
+    }
+    await reloadExpenses();
+  }catch(err){
+    msg(msgEl, "Não foi possível salvar. Tente novamente.", "error");
+  }
+});
 
 // Filter controls re-render the ledger live.
 ['finFilterClient','finFilterFrom','finFilterTo','finFilterReceipt'].forEach(id => {

@@ -547,6 +547,7 @@
   .fin-receipt-tag{font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--gray);}
   .fin-receipt-tag.yes{color:#5fbf7a;}
   .fin-amt{text-align:right;font-weight:600;font-size:15px;}
+  .fin-amt.neg{color:var(--red);}
   .fin-actions{display:flex;gap:10px;}
   .fin-edit,.fin-del{background:none;border:none;color:var(--gray);cursor:pointer;font-size:15px;padding:0;}
   .fin-edit:hover{color:var(--off-white);}
@@ -563,6 +564,7 @@
   .fin-total strong{color:var(--off-white);font-size:24px;font-family:'League Spartan',sans-serif;margin-left:6px;}
   .fin-total-sub{display:block;font-size:13px;color:var(--gray);margin-top:8px;}
   .fin-total-sub strong{font-size:16px;color:#5fbf7a;}
+  .fin-total-sub strong.neg{color:var(--red);}
   .q-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line);margin-top:6px;}
   @media(max-width:700px){.q-grid{grid-template-columns:1fr;}}
   /* collapsed-by-default "Meses anteriores" <details>: past SS months out of the way, current/upcoming stay visible */

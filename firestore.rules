@@ -42,6 +42,12 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    match /expenses/{entryId} {
+      // Business expenses (gear, software, transport, insurance, ...) — same
+      // private trust model as income, admin-only.
+      allow read, write: if isAdmin();
+    }
+
     match /leads/{leadId} {
       // Prospective clients who showed interest but haven't contracted yet.
       // No portal/magic-link access exists for a lead, so unlike `clients`
