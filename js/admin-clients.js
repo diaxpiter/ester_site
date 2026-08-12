@@ -16,7 +16,7 @@ import {
   addMonthsIso, packPriceNumber, PACKS, MONTHLY_BATCH_MONTHS, MONTHLY_MONTH_LABELS,
   clampRec, isMonthlyWorkflow, isPontualWorkflow, isCustomPontualWorkflow, monthlyRecCounts, workflowModel, workflowDoneSet,
   isProjectComplete, recordingSlots, projectPaymentDates, paymentStatus,
-  projectSteps, genId, clientLink, msg, toast, show, askConfirm, CAL_SVG,
+  genId, clientLink, msg, toast, show, askConfirm, CAL_SVG,
   openGoogleCalendarEvent, pad2, setAdminHash, ADMIN_EMAIL, getProjects
 } from './core.js';
 import { syncProjectIncome, deleteClientIncome, todayIso } from './admin-finance.js';
@@ -161,8 +161,7 @@ let currentPaymentNotes = [];   // per-instalment description (pontual/avulso pa
 let currentProjectId = null;  // project being edited
 let currentRecordingCount = 2;    // recordings for a linear (non-monthly) project (1–3)
 let currentRecordingCounts = [2, 2, 2];  // recordings PER MONTH for a monthly project (each 1–3)
-let currentWorkflowProgress = 0;  // completed steps in the sequential (linear) workflow
-let currentWorkflowDone = new Set(); // completed step keys in the branched (monthly) workflow
+let currentWorkflowDone = new Set(); // completed step keys for the project being edited (every pack type)
 let openWfGroup = null; // which single box (Comum or a month) is expanded in the branched stepper accordion
 let openWfGroupSet = false; // whether openWfGroup has been chosen yet (default vs. explicitly closed-to-null)
 let currentRecordingDates = [];   // ISO date per recording for the project being edited
@@ -474,63 +473,31 @@ function currentMonthIndex(){
   }
   return MONTHLY_BATCH_MONTHS;
 }
-// Branched (3-month) stepper: a "Comum" block + 3 independent month boxes, all
-// collapsible. Any step can be toggled in any order (no sequential locking).
-// Accordion: only ONE box (Comum or a single month) is expanded at a time —
-// opening one collapses whichever was open, so the checklist for 3 months
-// (7+ steps each) can't all pile up on screen simultaneously.
-function renderBranchedStepper(el){
-  const packId = document.getElementById('adminPack').value;
-  const model = workflowModel({ pack: packId }, currentRecordingCounts);
-  const groups = [];
-  model.forEach(s => {
-    let g = groups.find(x => x.name === s.group);
-    if(!g){ g = { name: s.group, steps: [] }; groups.push(g); }
-    g.steps.push(s);
-  });
-  const doneCount = model.filter(s => currentWorkflowDone.has(s.key)).length;
-  const checks = steps => steps.map(s => {
-    const on = currentWorkflowDone.has(s.key);
-    return `<label class="wf-check${on ? ' on' : ''}"><input type="checkbox" data-key="${s.key}"${on ? ' checked' : ''}><span>${escapeHtml(s.label)}</span></label>`;
-  }).join('');
-  const common = groups.find(g => g.name === 'Comum');
-  const months = groups.filter(g => g.name.indexOf('Mês') === 0);
-  // Default the open box to the current (first not fully done) month, unless
-  // the admin already picked one this session (incl. explicitly closing it all).
-  if(!openWfGroupSet){ openWfGroup = 'Mês ' + currentMonthIndex(); openWfGroupSet = true; }
-  const box = (g) => {
-    const gd = g.steps.filter(s => currentWorkflowDone.has(s.key)).length;
-    const open = g.name === openWfGroup;
-    return `<details class="wf-month" data-group="${escapeAttr(g.name)}"${open ? ' open' : ''}>`
-      + `<summary class="box-sum"><span>${escapeHtml(g.name)}</span><span class="box-count">${gd}/${g.steps.length}</span></summary>`
-      + `<div class="box-body">${checks(g.steps)}</div>`
-      + `</details>`;
-  };
-  let html = `<p class="wf-hint">Marque cada etapa concluída (em qualquer ordem). ${doneCount}/${model.length} concluídas.</p>`;
-  if(common) html += `<div class="wf-common">${box(common)}</div>`;
-  html += '<div class="wf-months">' + months.map(box).join('') + '</div>';
-  if(doneCount >= model.length) html += '<div class="wf-done">✓ Projeto concluído — todas as etapas finalizadas.</div>';
-  el.innerHTML = html;
-  el.querySelectorAll('.wf-month > .box-sum').forEach(sum => {
-    sum.addEventListener('click', (e) => {
-      e.preventDefault(); // we drive open/close via openWfGroup + a full re-render, not the native toggle
-      const group = sum.parentElement.dataset.group;
-      openWfGroup = (openWfGroup === group) ? null : group;
-      openWfGroupSet = true;
-      renderBranchedStepper(el);
-    });
-  });
-  el.querySelectorAll('.wf-check input').forEach(inp => {
-    inp.addEventListener('change', () => {
-      if(inp.checked) currentWorkflowDone.add(inp.dataset.key);
-      else currentWorkflowDone.delete(inp.dataset.key);
-      renderBranchedStepper(el);
-    });
-  });
+// Small icon per workflow group, purely visual (quick scanning, not data).
+const WF_GROUP_ICONS = {
+  'Comum': '📄', 'Contrato & Pagamento': '📄', 'Preparação': '🗂️',
+  'Gravação': '🎬', 'Pós-produção': '🎞️'
+};
+function wfGroupIcon(name){
+  return WF_GROUP_ICONS[name] || (name.indexOf('Mês') === 0 ? '🗓️' : '📌');
 }
-
-// Sequential stepper. `currentWorkflowProgress` = number of completed steps
-// (steps before it are done, that index is the current step, the rest are locked).
+// Which group should default-open: the first not-fully-done one (by order),
+// or the last one if everything is already done. Generalizes "current month"
+// (monthly packs) to "current phase" (every other pack) alike.
+function currentOpenGroup(groups){
+  for(const g of groups){
+    if(!g.steps.every(s => currentWorkflowDone.has(s.key))) return g.name;
+  }
+  return groups.length ? groups[groups.length - 1].name : null;
+}
+// Unified stepper: every non-pontual pack (monthly or linear) is rendered as a
+// handful of collapsible, icon-labeled boxes — a "Comum" block + 3 month boxes
+// for monthly packs, a flat sequence of phase boxes (Contrato & Pagamento →
+// Preparação → Gravação → Pós-produção) for everything else. Steps inside a
+// box can be checked in any order (no sequential locking — a rigid one-step-
+// at-a-time gate doesn't match how the work actually gets done), and each box
+// has a one-tap "Marcar tudo" to close out a whole phase at once instead of
+// clicking every checkbox. Accordion: only one box open at a time.
 function renderStepper(){
   const el = document.getElementById('workflowStepper');
   const packId = document.getElementById('adminPack').value;
@@ -540,31 +507,67 @@ function renderStepper(){
     el.innerHTML = '<p class="wf-hint">Trabalho avulso — sem fluxo de produção, só o acompanhamento do pagamento acima.</p>';
     return;
   }
-  // Monthly (3-month) packs use the branched, toggle-any-order stepper.
-  if(isMonthlyWorkflow({ pack: packId })){
-    renderBranchedStepper(el);
-    return;
-  }
-  const steps = projectSteps(currentRecordingCount);
-  if(currentWorkflowProgress > steps.length) currentWorkflowProgress = steps.length;
-  const stepsHtml = steps.map((label, i) => {
-    let cls = 'step', mark = '';
-    if(i < currentWorkflowProgress){ cls += ' done'; mark = '✓'; }
-    else if(i === currentWorkflowProgress){ cls += ' current'; }
-    else cls += ' locked';
-    return `<div class="${cls}" data-idx="${i}">
-      <div class="step-marker"><div class="step-dot">${mark}</div></div>
-      <div class="step-label">${escapeHtml(label)}</div>
-    </div>`;
+  const monthly = isMonthlyWorkflow({ pack: packId });
+  const model = workflowModel({ pack: packId }, monthly ? currentRecordingCounts : currentRecordingCount);
+  const groups = [];
+  model.forEach(s => {
+    let g = groups.find(x => x.name === s.group);
+    if(!g){ g = { name: s.group, steps: [] }; groups.push(g); }
+    g.steps.push(s);
+  });
+  const doneCount = model.filter(s => currentWorkflowDone.has(s.key)).length;
+  // Default the open box to the current (first not fully done) phase/month,
+  // unless the admin already picked one this session (incl. explicitly closed).
+  if(!openWfGroupSet){ openWfGroup = currentOpenGroup(groups); openWfGroupSet = true; }
+  const checks = steps => steps.map(s => {
+    const on = currentWorkflowDone.has(s.key);
+    return `<label class="wf-check${on ? ' on' : ''}"><input type="checkbox" data-key="${s.key}"${on ? ' checked' : ''}><span>${escapeHtml(s.label)}</span></label>`;
   }).join('');
-  const done = currentWorkflowProgress >= steps.length;
-  el.innerHTML = stepsHtml + (done ? '<div class="wf-done">✓ Projeto concluído — todas as etapas finalizadas.</div>' : '');
-  el.querySelectorAll('.step').forEach(s => {
-    s.addEventListener('click', () => {
-      const i = Number(s.dataset.idx);
-      if(i === currentWorkflowProgress) currentWorkflowProgress = i + 1;   // complete the current step
-      else if(i < currentWorkflowProgress) currentWorkflowProgress = i;    // revert to (uncomplete) this step
-      else return;                                                         // future step is locked
+  const box = (g) => {
+    const gd = g.steps.filter(s => currentWorkflowDone.has(s.key)).length;
+    const allDone = gd === g.steps.length;
+    const open = g.name === openWfGroup;
+    return `<details class="wf-month" data-group="${escapeAttr(g.name)}"${open ? ' open' : ''}>`
+      + `<summary class="box-sum"><span>${wfGroupIcon(g.name)} ${escapeHtml(g.name)}</span><span class="box-count">${gd}/${g.steps.length}</span></summary>`
+      + `<div class="box-body">`
+      + `<button type="button" class="wf-mark-all" data-group="${escapeAttr(g.name)}">${allDone ? 'Desmarcar tudo' : 'Marcar tudo'}</button>`
+      + checks(g.steps)
+      + `</div></details>`;
+  };
+  const frac = model.length ? Math.round(doneCount / model.length * 100) : 0;
+  let html = `<div class="wf-progress"><div class="wf-progress-track"><div class="wf-progress-fill" style="width:${frac}%"></div></div><span class="wf-progress-label">${doneCount}/${model.length} concluídas</span></div>`;
+  if(monthly){
+    const common = groups.find(g => g.name === 'Comum');
+    const months = groups.filter(g => g.name.indexOf('Mês') === 0);
+    if(common) html += `<div class="wf-common">${box(common)}</div>`;
+    html += '<div class="wf-months">' + months.map(box).join('') + '</div>';
+  } else {
+    html += '<div class="wf-phases">' + groups.map(box).join('') + '</div>';
+  }
+  if(model.length && doneCount >= model.length) html += '<div class="wf-done">✓ Projeto concluído — todas as etapas finalizadas.</div>';
+  el.innerHTML = html;
+  el.querySelectorAll('.wf-month > .box-sum').forEach(sum => {
+    sum.addEventListener('click', (e) => {
+      e.preventDefault(); // we drive open/close via openWfGroup + a full re-render, not the native toggle
+      const group = sum.parentElement.dataset.group;
+      openWfGroup = (openWfGroup === group) ? null : group;
+      openWfGroupSet = true;
+      renderStepper();
+    });
+  });
+  el.querySelectorAll('.wf-mark-all').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const g = groups.find(x => x.name === btn.dataset.group);
+      if(!g) return;
+      const allDone = g.steps.every(s => currentWorkflowDone.has(s.key));
+      g.steps.forEach(s => allDone ? currentWorkflowDone.delete(s.key) : currentWorkflowDone.add(s.key));
+      renderStepper();
+    });
+  });
+  el.querySelectorAll('.wf-check input').forEach(inp => {
+    inp.addEventListener('change', () => {
+      if(inp.checked) currentWorkflowDone.add(inp.dataset.key);
+      else currentWorkflowDone.delete(inp.dataset.key);
       renderStepper();
     });
   });
@@ -649,9 +652,14 @@ function renderRecordingDates(){
     const iso = currentRecordingDates[s.idx] || '';
     const time = currentRecordingTimes[s.idx] || '';
     const endTime = currentRecordingEndTimes[s.idx] || '';
+    // Reuses the same "Faltam X dias / Vence hoje / Em atraso" countdown +
+    // color language already used for payments — same at-a-glance urgency
+    // read, now for scheduled recordings too.
+    const st = iso ? paymentStatus(iso) : null;
     return `<div class="rec-date-row">
       <span class="rec-date-num">${escapeHtml(s.label)}</span>
       <span class="date-field"><input type="text" class="rec-date-box date-inp" data-idx="${s.idx}" data-iso="${iso}" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">📅</button></span>
+      ${st ? `<span class="rec-status ${st.mod}">${escapeHtml(st.text)}</span>` : ''}
       <span class="rec-time-group">
         <select class="rec-time-box rec-time-start" data-idx="${s.idx}" aria-label="Hora de início">${timeSelectOptions(time, 'início')}</select>
         <span class="rec-time-sep">–</span>
@@ -922,7 +930,6 @@ export function openProject(projectId){
   currentRecordingCounts = Array.isArray(p.recordingCounts)
     ? monthlyRecCounts(p)
     : [currentRecordingCount, currentRecordingCount, currentRecordingCount];
-  currentWorkflowProgress = p.workflowProgress || 0;
   currentWorkflowDone = workflowDoneSet(p);
   openWfGroup = null; openWfGroupSet = false; // re-derive the default open box for this project's own progress
   currentRecordingDates = Array.isArray(p.recordingDates) ? p.recordingDates.slice() : [];
@@ -974,15 +981,13 @@ document.getElementById('adminSaveProjectBtn').addEventListener('click', async (
   project.recordingDates    = currentRecordingDates.slice(0, slotLen).map(d => d || '');
   project.recordingTimes    = currentRecordingTimes.slice(0, slotLen).map(t => t || '');
   project.recordingEndTimes = currentRecordingEndTimes.slice(0, slotLen).map(t => t || '');
-  // Branched (monthly) packs persist a set of completed step keys + the per-month
-  // recording counts; linear packs keep the integer progress count.
-  if(monthly){
-    project.recordingCounts = currentRecordingCounts.map(clampRec);
-    const validKeys = new Set(workflowModel({ pack: packVal }, project.recordingCounts).map(s => s.key));
-    project.workflowDone = Array.from(currentWorkflowDone).filter(k => validKeys.has(k));
-  } else {
-    project.workflowProgress = currentWorkflowProgress;
-  }
+  // Every pack type now persists a set of completed step keys (workflowDone) —
+  // monthly packs additionally persist their per-month recording counts. Stale
+  // keys (e.g. a recording count that shrank) are dropped against a freshly
+  // computed valid-key set.
+  if(monthly) project.recordingCounts = currentRecordingCounts.map(clampRec);
+  const validKeys = new Set(workflowModel({ pack: packVal }, monthly ? project.recordingCounts : project.recordingCount).map(s => s.key));
+  project.workflowDone = Array.from(currentWorkflowDone).filter(k => validKeys.has(k));
   const list = currentClientData.projects || (currentClientData.projects = []);
   const idx = list.findIndex(x => x.id === currentProjectId);
   if(idx >= 0) list[idx] = project; else list.push(project);

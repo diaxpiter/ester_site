@@ -170,10 +170,20 @@
   .rec-section{margin-top:26px;padding-top:24px;border-top:1px solid var(--line);}
   .rec-section .pay-title{margin-bottom:12px;}
   /* admin: recording-date inputs (one per gravação) */
-  .rec-date-row{display:flex;align-items:center;flex-wrap:wrap;gap:14px;padding:8px 0;}
+  .rec-date-row{display:flex;align-items:center;flex-wrap:wrap;gap:14px;padding:12px 0;border-bottom:1px solid var(--line);}
+  .rec-date-row:last-child{border-bottom:none;}
   .rec-cal-admin{flex:0 0 auto;}
   .rec-date-num{font-size:13px;color:var(--gray);min-width:104px;flex:0 0 auto;}
   .rec-date-row .date-field{flex:1 1 150px;min-width:0;max-width:240px;}
+  /* Countdown badge — same color language as the payment "days" text
+     (green upcoming / orange today / red overdue), reused here so a scheduled
+     recording's urgency reads at a glance without doing date math. */
+  .rec-status{
+    font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap;
+    background:rgba(95,191,122,0.12);color:#5fbf7a;flex:0 0 auto;
+  }
+  .rec-status.today{background:rgba(240,162,75,0.12);color:#f0a24b;}
+  .rec-status.overdue{background:rgba(229,87,63,0.12);color:var(--red);}
 
   /* client: project carousel */
   .proj-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:16px;}
@@ -479,30 +489,19 @@
   .section-divider{margin-top:56px;}
   .section-divider h3{font-size:20px;font-style:italic;font-weight:400;margin-bottom:20px;}
 
-  /* project workflow — sequential vertical stepper (admin) */
+  /* project workflow — grouped, collapsible stepper (admin) */
   .stepper{display:flex;flex-direction:column;margin-top:8px;}
-  .step{display:flex;gap:16px;align-items:flex-start;}
-  .step-marker{position:relative;flex-shrink:0;width:20px;display:flex;justify-content:center;}
-  .step-dot{
-    width:18px;height:18px;border-radius:50%;border:2px solid var(--line);background:var(--black);
-    z-index:1;margin-top:2px;display:flex;align-items:center;justify-content:center;
-    font-size:10px;line-height:1;color:var(--black);
+  .wf-progress{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+  .wf-progress-track{flex:1 1 auto;height:6px;border-radius:999px;background:var(--line);overflow:hidden;}
+  .wf-progress-fill{height:100%;background:#5fbf7a;border-radius:999px;transition:width .3s ease;}
+  .wf-progress-label{flex:0 0 auto;font-size:12px;color:var(--gray);white-space:nowrap;}
+  .wf-phases{display:flex;flex-direction:column;gap:14px;}
+  .wf-mark-all{
+    display:block;margin:0 0 12px auto;background:none;border:1px solid var(--line);color:var(--gray);
+    font-size:11px;text-transform:uppercase;letter-spacing:0.08em;padding:6px 12px;
+    border-radius:999px;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease;
   }
-  .step:not(:last-child) .step-marker::after{
-    content:"";position:absolute;top:18px;bottom:-4px;left:50%;transform:translateX(-50%);
-    width:2px;background:var(--line);
-  }
-  .step-label{padding-bottom:22px;font-size:14px;color:var(--gray);line-height:1.45;}
-  .step.done{cursor:pointer;}
-  .step.done .step-dot{background:#5fbf7a;border-color:#5fbf7a;}
-  .step.done .step-marker::after{background:#5fbf7a;}
-  .step.done .step-label{color:var(--off-white);}
-  .step.current{cursor:pointer;}
-  .step.current .step-dot{border-color:var(--off-white);box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.16);}
-  .step.current .step-label{color:var(--off-white);font-weight:500;}
-  .step.locked{cursor:not-allowed;}
-  .step.locked .step-label{opacity:0.5;}
-  input[type="range"]{width:100%;accent-color:#5fbf7a;cursor:pointer;margin-top:6px;}
+  .wf-mark-all:hover{color:var(--off-white);border-color:var(--off-white);background:rgba(var(--off-white-rgb),0.06);}
 
   /* finance */
   .fin-yearbar{display:flex;align-items:center;gap:18px;margin-bottom:8px;}

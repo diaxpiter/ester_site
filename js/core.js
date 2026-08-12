@@ -69,26 +69,21 @@ export const MONTHLY_BATCH_MONTHS = 3;
 export const PACKS = {};
 PACK_GROUPS.forEach(g => g.packs.forEach(p => { PACKS[p.id] = { ...p, category: g.category }; }));
 
-// Per-project workflow — strictly sequential steps. The "Gravação" steps are
-// generated from the project's recording count, between references and editing.
-export const WORKFLOW_HEAD = [
-  'Reunião para apresentar proposta',
-  'Solicitar dados para contrato',
-  'Envio do contrato',
-  'Pagamento recebido',
-  'Emissão de recibo',
-  'Pasta do projeto no Drive',
-  'Organização do projeto',
-  'Reunião para brainstorm',
-  'PDF com referências'
+// Per-project workflow phases for a linear (non-monthly) pack, in order.
+// Grouped into a handful of named phases (rather than one flat 12-14-item
+// list) so the admin UI can present them as a few collapsible milestones
+// instead of a long sequential checklist.
+export const WORKFLOW_PHASES = [
+  { name: 'Contrato & Pagamento', steps: [
+    'Reunião para apresentar proposta', 'Solicitar dados para contrato',
+    'Envio do contrato', 'Pagamento recebido', 'Emissão de recibo'
+  ] },
+  { name: 'Preparação', steps: [
+    'Pasta do projeto no Drive', 'Organização do projeto',
+    'Reunião para brainstorm', 'PDF com referências'
+  ] },
+  { name: 'Pós-produção', steps: ['Edição do material', 'PDF de apresentação final'] }
 ];
-export const WORKFLOW_TAIL = ['Edição do material', 'PDF de apresentação final'];
-export function projectSteps(recordingCount){
-  const n = Math.max(1, recordingCount || 1);
-  const labels = WORKFLOW_HEAD.slice();
-  for(let i = 1; i <= n; i++) labels.push('Gravação ' + i);
-  return labels.concat(WORKFLOW_TAIL);
-}
 export const MONTHLY_MONTH_LABELS = ['1º mês', '2º mês', '3º mês'];
 export const REC_MIN = 1, REC_MAX = 3;   // recordings are limited to 1–3 (per month for monthly packs)
 export const clampRec = n => Math.min(REC_MAX, Math.max(REC_MIN, Number(n) || REC_MIN));
@@ -130,7 +125,14 @@ export function workflowModel(p, override){
   if(isPontualWorkflow(p)) return []; // avulso packs: payments only, no checklist
   if(!isMonthlyWorkflow(p)){
     const flat = (typeof override === 'number') ? override : (p.recordingCount || 1);
-    return projectSteps(clampRec(flat)).map((label, i) => ({ key: 's' + i, label, group: '' }));
+    const rec = clampRec(flat);
+    const steps = [];
+    let i = 0;
+    WORKFLOW_PHASES[0].steps.forEach(label => steps.push({ key: 's' + (i++), label, group: WORKFLOW_PHASES[0].name }));
+    WORKFLOW_PHASES[1].steps.forEach(label => steps.push({ key: 's' + (i++), label, group: WORKFLOW_PHASES[1].name }));
+    for(let r = 1; r <= rec; r++) steps.push({ key: 's' + (i++), label: rec > 1 ? `Gravação ${r}` : 'Gravação', group: 'Gravação' });
+    WORKFLOW_PHASES[2].steps.forEach(label => steps.push({ key: 's' + (i++), label, group: WORKFLOW_PHASES[2].name }));
+    return steps;
   }
   const counts = monthlyRecCounts(p, override);
   const steps = [
