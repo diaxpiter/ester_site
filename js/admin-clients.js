@@ -319,8 +319,8 @@ function updateProjectFormVisibility(){
   const customPontual = isCustomPontualWorkflow({ pack: packId });
   document.getElementById('adminContractStartField').classList.toggle('hidden', pontual);
   document.getElementById('linksSection').classList.toggle('hidden', pontual);
-  document.getElementById('workflowSection').classList.toggle('hidden', pontual);
-  document.getElementById('recDatesSection').classList.toggle('hidden', pontual && !customPontual);
+  document.getElementById('fluxoBlock').classList.toggle('hidden', pontual);
+  document.getElementById('recDatesRow').classList.toggle('hidden', pontual && !customPontual);
 }
 document.getElementById('adminPack').addEventListener('change', () => {
   captureRecordingDates();   // keep typed dates when the slot layout changes
@@ -332,9 +332,11 @@ document.getElementById('adminPack').addEventListener('change', () => {
   updateContractHint();
   updateProjectFormVisibility();
   renderPaymentList();
+  refreshPaymentsSummary();
   renderRecordingCountControls();  // switch between single slider and per-month sliders
-  renderStepper();          // switch between linear and branched (monthly) workflow
+  refreshWorkflow();        // switch between linear and branched (monthly) workflow
   renderRecordingDates();   // switch between flat and per-month recording dates
+  refreshRecDatesSummary();
 });
 document.getElementById('adminContractStart').addEventListener('change', updateContractHint);
 
@@ -490,23 +492,9 @@ function currentOpenGroup(groups){
   }
   return groups.length ? groups[groups.length - 1].name : null;
 }
-// Unified stepper: every non-pontual pack (monthly or linear) is rendered as a
-// handful of collapsible, icon-labeled boxes — a "Comum" block + 3 month boxes
-// for monthly packs, a flat sequence of phase boxes (Contrato & Pagamento →
-// Preparação → Gravação → Pós-produção) for everything else. Steps inside a
-// box can be checked in any order (no sequential locking — a rigid one-step-
-// at-a-time gate doesn't match how the work actually gets done), and each box
-// has a one-tap "Marcar tudo" to close out a whole phase at once instead of
-// clicking every checkbox. Accordion: only one box open at a time.
-function renderStepper(){
-  const el = document.getElementById('workflowStepper');
+// Build the {name, steps[]} groups for the current pack/rec-count, in order.
+function workflowGroups(){
   const packId = document.getElementById('adminPack').value;
-  // Avulso/pontual packs (one-off service clients): no production checklist,
-  // just the payment tracking above — see isPontualWorkflow in core.js.
-  if(isPontualWorkflow({ pack: packId })){
-    el.innerHTML = '<p class="wf-hint">Trabalho avulso — sem fluxo de produção, só o acompanhamento do pagamento acima.</p>';
-    return;
-  }
   const monthly = isMonthlyWorkflow({ pack: packId });
   const model = workflowModel({ pack: packId }, monthly ? currentRecordingCounts : currentRecordingCount);
   const groups = [];
@@ -515,13 +503,65 @@ function renderStepper(){
     if(!g){ g = { name: s.group, steps: [] }; groups.push(g); }
     g.steps.push(s);
   });
+  return { monthly, model, groups };
+}
+// The first not-yet-done step, in order — what the compact widget offers to
+// complete next. null once everything is done.
+function nextPendingStep(model){
+  return model.find(s => !currentWorkflowDone.has(s.key)) || null;
+}
+// Compact day-to-day widget: a progress bar + the ONE next pending step with
+// a big one-tap "Concluir" button. This is what she actually touches every
+// day — no scanning a checklist to remember what's left, no tiny tap targets.
+// "Ver fluxo completo" opens the full grouped checklist in a popup for the
+// occasional need to jump around or batch-complete a whole phase.
+function renderFluxoWidget(){
+  const el = document.getElementById('fluxoWidget');
+  const packId = document.getElementById('adminPack').value;
+  if(isPontualWorkflow({ pack: packId })){
+    el.innerHTML = '<p class="wf-hint">Trabalho avulso — sem fluxo de produção, só o acompanhamento do pagamento acima.</p>';
+    return;
+  }
+  const { model } = workflowGroups();
   const doneCount = model.filter(s => currentWorkflowDone.has(s.key)).length;
+  const frac = model.length ? Math.round(doneCount / model.length * 100) : 0;
+  const next = nextPendingStep(model);
+  let html = `<div class="wf-progress"><div class="wf-progress-track"><div class="wf-progress-fill" style="width:${frac}%"></div></div><span class="wf-progress-label">${doneCount}/${model.length}</span></div>`;
+  if(next){
+    html += `<div class="wf-next">
+      <span class="wf-next-label">${wfGroupIcon(next.group)} Próxima etapa · ${escapeHtml(next.group)}</span>
+      <p class="wf-next-step">${escapeHtml(next.label)}</p>
+      <button type="button" class="btn" id="wfQuickCompleteBtn">✓ Concluir</button>
+    </div>`;
+  } else if(model.length){
+    html += '<div class="wf-done">✓ Projeto concluído — todas as etapas finalizadas.</div>';
+  }
+  html += `<button type="button" class="btn-mini" id="wfSeeAllBtn">Ver fluxo completo</button>`;
+  el.innerHTML = html;
+  const quickBtn = document.getElementById('wfQuickCompleteBtn');
+  if(quickBtn) quickBtn.addEventListener('click', () => {
+    if(next) currentWorkflowDone.add(next.key);
+    refreshWorkflow();
+  });
+  document.getElementById('wfSeeAllBtn').addEventListener('click', () => openModal('workflowModal'));
+}
+// Full checklist popup: a "Comum" block + 3 month boxes for monthly packs, a
+// flat sequence of phase boxes (Contrato & Pagamento → Preparação → Gravação
+// → Pós-produção) for everything else. Steps are big, full-width tap targets
+// (not tiny checkboxes — easy to miss on a phone) toggleable in any order,
+// and each box has a one-tap "Marcar tudo" to close out a whole phase at
+// once. Accordion: only one box open at a time.
+function renderWorkflowModal(){
+  const el = document.getElementById('workflowModalBody');
+  const packId = document.getElementById('adminPack').value;
+  if(isPontualWorkflow({ pack: packId })){ el.innerHTML = ''; return; }
+  const { monthly, groups } = workflowGroups();
   // Default the open box to the current (first not fully done) phase/month,
   // unless the admin already picked one this session (incl. explicitly closed).
   if(!openWfGroupSet){ openWfGroup = currentOpenGroup(groups); openWfGroupSet = true; }
-  const checks = steps => steps.map(s => {
+  const rows = steps => steps.map(s => {
     const on = currentWorkflowDone.has(s.key);
-    return `<label class="wf-check${on ? ' on' : ''}"><input type="checkbox" data-key="${s.key}"${on ? ' checked' : ''}><span>${escapeHtml(s.label)}</span></label>`;
+    return `<button type="button" class="wf-row${on ? ' on' : ''}" data-key="${s.key}"><span class="wf-row-mark">${on ? '✓' : ''}</span><span class="wf-row-label">${escapeHtml(s.label)}</span></button>`;
   }).join('');
   const box = (g) => {
     const gd = g.steps.filter(s => currentWorkflowDone.has(s.key)).length;
@@ -531,11 +571,10 @@ function renderStepper(){
       + `<summary class="box-sum"><span>${wfGroupIcon(g.name)} ${escapeHtml(g.name)}</span><span class="box-count">${gd}/${g.steps.length}</span></summary>`
       + `<div class="box-body">`
       + `<button type="button" class="wf-mark-all" data-group="${escapeAttr(g.name)}">${allDone ? 'Desmarcar tudo' : 'Marcar tudo'}</button>`
-      + checks(g.steps)
+      + rows(g.steps)
       + `</div></details>`;
   };
-  const frac = model.length ? Math.round(doneCount / model.length * 100) : 0;
-  let html = `<div class="wf-progress"><div class="wf-progress-track"><div class="wf-progress-fill" style="width:${frac}%"></div></div><span class="wf-progress-label">${doneCount}/${model.length} concluídas</span></div>`;
+  let html = '';
   if(monthly){
     const common = groups.find(g => g.name === 'Comum');
     const months = groups.filter(g => g.name.indexOf('Mês') === 0);
@@ -544,7 +583,6 @@ function renderStepper(){
   } else {
     html += '<div class="wf-phases">' + groups.map(box).join('') + '</div>';
   }
-  if(model.length && doneCount >= model.length) html += '<div class="wf-done">✓ Projeto concluído — todas as etapas finalizadas.</div>';
   el.innerHTML = html;
   el.querySelectorAll('.wf-month > .box-sum').forEach(sum => {
     sum.addEventListener('click', (e) => {
@@ -552,7 +590,7 @@ function renderStepper(){
       const group = sum.parentElement.dataset.group;
       openWfGroup = (openWfGroup === group) ? null : group;
       openWfGroupSet = true;
-      renderStepper();
+      renderWorkflowModal();
     });
   });
   el.querySelectorAll('.wf-mark-all').forEach(btn => {
@@ -561,16 +599,23 @@ function renderStepper(){
       if(!g) return;
       const allDone = g.steps.every(s => currentWorkflowDone.has(s.key));
       g.steps.forEach(s => allDone ? currentWorkflowDone.delete(s.key) : currentWorkflowDone.add(s.key));
-      renderStepper();
+      refreshWorkflow();
     });
   });
-  el.querySelectorAll('.wf-check input').forEach(inp => {
-    inp.addEventListener('change', () => {
-      if(inp.checked) currentWorkflowDone.add(inp.dataset.key);
-      else currentWorkflowDone.delete(inp.dataset.key);
-      renderStepper();
+  el.querySelectorAll('.wf-row').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      if(currentWorkflowDone.has(key)) currentWorkflowDone.delete(key);
+      else currentWorkflowDone.add(key);
+      refreshWorkflow();
     });
   });
+}
+// The widget and the modal both read/write the same currentWorkflowDone set —
+// keep them in sync on every change instead of picking one to re-render.
+function refreshWorkflow(){
+  renderFluxoWidget();
+  renderWorkflowModal();
 }
 // The current recording-count override to feed workflowModel/recordingSlots:
 // a per-month array for monthly packs, a single number otherwise.
@@ -612,8 +657,9 @@ function renderRecordingCountControls(){
       if(btn.dataset.m === 'flat') currentRecordingCount = v;
       else currentRecordingCounts[Number(btn.dataset.m)] = v;
       renderRecordingCountControls();
-      renderStepper();
+      refreshWorkflow();
       renderRecordingDates();
+      refreshRecDatesSummary();
     });
   });
 }
@@ -939,12 +985,74 @@ export function openProject(projectId){
   updateProjectFormVisibility();
   renderPaymentList();
   renderRecordingCountControls();
-  renderStepper();
+  refreshWorkflow();
   renderRecordingDates();
+  refreshRecDatesSummary();
+  refreshPaymentsSummary();
+  refreshDetailsSummary();
 
   ['adminProjectMsg','adminDeleteProjectMsg'].forEach(id => { document.getElementById(id).className = 'form-msg'; });
   show('view-admin-project');
 }
+
+// ---- Popups for the sections edited rarely: one-line summary on the main
+// page, full editor behind an "Editar" button. Keeps the day-to-day page
+// short — nothing here changes how/where the data itself is read or saved.
+function openModal(id){ document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.querySelectorAll('[data-modal-close]').forEach(btn => btn.addEventListener('click', () => overlay.classList.add('hidden')));
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.classList.add('hidden'); });
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key !== 'Escape') return;
+  document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(o => o.classList.add('hidden'));
+});
+document.getElementById('recDatesEditBtn').addEventListener('click', () => openModal('recDatesModal'));
+document.getElementById('paymentsEditBtn').addEventListener('click', () => openModal('paymentsModal'));
+document.getElementById('detailsEditBtn').addEventListener('click', () => openModal('detailsModal'));
+
+function refreshRecDatesSummary(){
+  const el = document.getElementById('recDatesSummary');
+  const packVal = document.getElementById('adminPack').value;
+  const slots = recordingSlots({ pack: packVal, recordingDates: currentRecordingDates }, currentRecOverride());
+  if(!slots.length){ el.textContent = 'Nenhuma gravação definida.'; return; }
+  const filled = slots.filter(s => currentRecordingDates[s.idx]).length;
+  const dates = slots.map(s => currentRecordingDates[s.idx]).filter(Boolean).sort();
+  const next = dates.find(d => d >= todayIso()) || dates[0];
+  el.textContent = `${filled}/${slots.length} agendadas` + (next ? ` · Próxima: ${formatDatePt(next)}` : '');
+}
+function refreshPaymentsSummary(){
+  const el = document.getElementById('paymentsSummary');
+  const dates = currentPaymentDates;
+  if(!dates.length){ el.textContent = 'Nenhum pagamento definido.'; return; }
+  const paidCount = currentPaymentsPaid.filter(Boolean).length;
+  const nextIdx = dates.findIndex((d, i) => d && !currentPaymentsPaid[i]);
+  el.textContent = `${paidCount}/${dates.length} pagos` + (nextIdx >= 0 ? ` · Próximo: ${formatDatePt(dates[nextIdx])}` : '');
+}
+function refreshDetailsSummary(){
+  const el = document.getElementById('detailsSummary');
+  const delivery = getISO(document.getElementById('adminDeliveryDate'));
+  const drive = document.getElementById('adminDriveLink').value.trim();
+  const linksHidden = document.getElementById('linksSection').classList.contains('hidden');
+  const parts = [delivery ? `Entrega: ${formatDatePt(delivery)}` : 'Entrega não definida'];
+  if(!linksHidden) parts.push(drive ? 'Link configurado' : 'Sem link');
+  el.textContent = parts.join(' · ');
+}
+// The popups' own internal edits (add/remove a payment row, type a date...)
+// only need to reach the main-page summary once the admin is done — refresh
+// on close rather than wiring every internal control individually.
+document.getElementById('recDatesModal').addEventListener('click', (e) => {
+  if(e.target.closest('[data-modal-close]') || e.target === e.currentTarget) refreshRecDatesSummary();
+});
+document.getElementById('paymentsModal').addEventListener('click', (e) => {
+  if(e.target.closest('[data-modal-close]') || e.target === e.currentTarget) refreshPaymentsSummary();
+});
+document.getElementById('detailsModal').addEventListener('click', (e) => {
+  if(e.target.closest('[data-modal-close]') || e.target === e.currentTarget) refreshDetailsSummary();
+});
+document.getElementById('adminDeliveryDate').addEventListener('change', refreshDetailsSummary);
+document.getElementById('adminDriveLink').addEventListener('change', refreshDetailsSummary);
 
 document.getElementById('adminAddProjectBtn').addEventListener('click', () => {
   if(currentIsNew) return;
