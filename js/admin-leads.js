@@ -92,16 +92,14 @@ document.getElementById('leadAddBtn').addEventListener('click', async () => {
   const phone = document.getElementById('leadPhone').value.trim();
   const email = document.getElementById('leadEmail').value.trim();
   const note = document.getElementById('leadNote').value.trim();
-  const nextAction = document.getElementById('leadNextAction').value.trim();
   if(!firstName){ msg(msgEl, "Informe pelo menos o nome.", "error"); return; }
   if(!phone && !email){ msg(msgEl, "Informe um telefone ou email, para poder contactar depois.", "error"); return; }
   try{
-    await addDoc(collection(db, "leads"), { firstName, phone, email, note, nextAction, createdAt: serverTimestamp() });
+    await addDoc(collection(db, "leads"), { firstName, phone, email, note, createdAt: serverTimestamp() });
     document.getElementById('leadFirstName').value = '';
     document.getElementById('leadPhone').value = '';
     document.getElementById('leadEmail').value = '';
     document.getElementById('leadNote').value = '';
-    document.getElementById('leadNextAction').value = '';
     msg(msgEl, "Lead adicionado.", "ok");
     toast('Lead adicionado ✓');
     loadLeads();
