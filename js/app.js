@@ -23,7 +23,7 @@ document.getElementById('themeToggle').addEventListener('click', () => {
 });
 
 // Enhance the static date fields once (dynamic payment dates are enhanced on render).
-['adminContractStart','adminDeliveryDate','finDate','finFilterFrom','finFilterTo'].forEach(id => {
+['adminContractStart','finDate','finFilterFrom','finFilterTo'].forEach(id => {
   const el = document.getElementById(id);
   if(el) enhanceDateField(el);
 });
@@ -158,9 +158,35 @@ try{
   }
 }catch(e){}
 
-// Register the PWA service worker so the portal is installable ("Add to Home Screen").
+// Register the PWA service worker so the portal is installable ("Add to Home
+// Screen") — and keep it self-updating, so a deploy reaches clients without
+// them ever having to hard-refresh. skipWaiting()/clients.claim() (sw.js)
+// already activate a new version immediately instead of waiting for every
+// tab to close; the piece that was missing is telling an ALREADY-OPEN tab to
+// actually reload once that happens; that page is otherwise still running
+// the old JS in memory even though the new SW has taken over.
 if('serviceWorker' in navigator){
-  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  // Only auto-reload for a genuine update (an existing controller being
+  // replaced) — not a brand-new visitor's very first install, where a
+  // reload would just be a pointless extra request.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloadedForUpdate = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(!hadController || reloadedForUpdate) return;
+    reloadedForUpdate = true;
+    window.location.reload();
+  });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      // Browsers auto-check for a new sw.js on navigation, but an installed
+      // PWA (or a tab left open for days) may never navigate — poll for
+      // updates periodically and whenever the tab becomes visible again.
+      setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => {
+        if(document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+    }).catch(() => {});
+  });
 }
 
 if(linkClientId){

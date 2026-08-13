@@ -170,10 +170,37 @@
   .rec-section{margin-top:26px;padding-top:24px;border-top:1px solid var(--line);}
   .rec-section .pay-title{margin-bottom:12px;}
   /* admin: recording-date inputs (one per gravação) */
-  .rec-date-row{display:flex;align-items:center;flex-wrap:wrap;gap:14px;padding:8px 0;}
+  .rec-date-row{display:flex;align-items:center;flex-wrap:wrap;gap:14px;padding:12px 0;border-bottom:1px solid var(--line);}
+  .rec-date-row:last-child{border-bottom:none;}
   .rec-cal-admin{flex:0 0 auto;}
   .rec-date-num{font-size:13px;color:var(--gray);min-width:104px;flex:0 0 auto;}
   .rec-date-row .date-field{flex:1 1 150px;min-width:0;max-width:240px;}
+  /* Countdown badge — same color language as the payment "days" text
+     (green upcoming / orange today / red overdue), reused here so a scheduled
+     recording's urgency reads at a glance without doing date math. */
+  .rec-status{
+    font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap;
+    background:rgba(95,191,122,0.12);color:#5fbf7a;flex:0 0 auto;
+  }
+  .rec-status.today{background:rgba(240,162,75,0.12);color:#f0a24b;}
+  .rec-status.overdue{background:rgba(229,87,63,0.12);color:var(--red);}
+
+  /* client: "Fluxo do projeto" timeline — Início → Pagamento → Roteirização →
+     Gravação → Edição → Entrega, a coarser client-facing read of the admin's
+     own step-by-step workflow (see core.js projectFlowStage). */
+  .flow-timeline{
+    display:flex;align-items:flex-start;overflow-x:auto;padding-bottom:2px;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+  }
+  .flow-timeline::-webkit-scrollbar{display:none;}
+  .flow-step{display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 auto;min-width:74px;}
+  .flow-dot{width:12px;height:12px;border-radius:50%;background:var(--line);border:2px solid var(--line);flex:0 0 auto;transition:background .2s ease,border-color .2s ease;}
+  .flow-step.done .flow-dot{background:#5fbf7a;border-color:#5fbf7a;}
+  .flow-step.current .flow-dot{background:var(--black);border-color:#5fbf7a;box-shadow:0 0 0 3px rgba(95,191,122,0.25);}
+  .flow-label{font-size:11px;color:var(--gray);text-align:center;white-space:nowrap;}
+  .flow-step.done .flow-label, .flow-step.current .flow-label{color:var(--off-white);}
+  .flow-connector{flex:1 1 24px;height:2px;background:var(--line);margin-top:5px;min-width:16px;}
+  .flow-step.done + .flow-connector{background:#5fbf7a;}
 
   /* client: project carousel */
   .proj-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:16px;}
@@ -224,10 +251,9 @@
     background:rgba(95,191,122,0.08);padding:4px 12px;border-radius:999px;
   }
   .wf-done{margin-top:16px;color:#5fbf7a;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;}
-  /* admin: branched (3-month) workflow — "Comum" box + 3 month boxes, accordion
+  /* admin: branched (3-month) workflow — 3 month boxes, accordion
      (only one expanded at a time via admin-clients.js's openWfGroup) */
   .wf-hint{font-size:13px;color:var(--gray);margin-bottom:16px;}
-  .wf-common{margin-bottom:16px;}
   .wf-months{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
   @media(max-width:760px){.wf-months{grid-template-columns:1fr;}}
   .wf-month{border:1px solid var(--line);border-radius:6px;overflow:hidden;}
@@ -245,9 +271,23 @@
   .box-count{font-size:11px;letter-spacing:0.06em;text-transform:none;color:var(--gray);}
   .box-body{padding:2px 16px 14px;}
   .rec-month{border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:12px;}
-  .wf-check{display:flex;align-items:flex-start;gap:10px;padding:7px 0;font-size:13px;color:var(--gray);cursor:pointer;line-height:1.35;}
-  .wf-check input{width:16px;height:16px;margin-top:1px;accent-color:#5fbf7a;flex:0 0 auto;cursor:pointer;}
-  .wf-check.on{color:var(--off-white);}
+  /* Full-width, big-tap-target step rows (replaces a tiny checkbox — easy to
+     miss on a phone — with a whole row you can tap anywhere on). */
+  .wf-row{
+    display:flex;align-items:center;gap:14px;width:100%;min-height:52px;
+    background:none;border:none;border-bottom:1px solid var(--line);
+    padding:14px 4px;text-align:left;cursor:pointer;color:var(--gray);
+    font-family:'Inter',sans-serif;font-size:14px;line-height:1.35;
+  }
+  .wf-row:last-child{border-bottom:none;}
+  .wf-row:hover{background:rgba(var(--off-white-rgb),0.05);}
+  .wf-row-mark{
+    flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:2px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:14px;color:#0a0a0a;
+    transition:background .15s ease,border-color .15s ease;
+  }
+  .wf-row.on{color:var(--off-white);}
+  .wf-row.on .wf-row-mark{background:#5fbf7a;border-color:#5fbf7a;}
   .proj-plan{color:var(--off-white);font-size:15px;margin-bottom:6px;}
   .proj-period{color:var(--gray);font-size:13px;margin-bottom:6px;}
 
@@ -376,24 +416,6 @@
   .pay-admin-paid input{width:16px;height:16px;accent-color:#5fbf7a;flex-shrink:0;cursor:pointer;}
   .dash-line{display:block;line-height:1.9;}
   .dash-key{color:var(--gray);}
-  .rec-count-row{display:flex;align-items:center;gap:14px;margin:10px 0;}
-  /* 3 month columns side by side (desktop), stacked full-width on mobile — same
-     breakpoint as .wf-months so both pieces of the monthly workflow UI match. */
-  .rec-count-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:10px 0;}
-  @media(max-width:760px){.rec-count-grid{grid-template-columns:1fr;}}
-  .rec-count-col{display:flex;flex-direction:column;gap:8px;}
-  .rec-count-mo{font-size:13px;color:var(--gray);}
-  /* 1/2/3 segmented control (replaces the old range slider for this small discrete choice) */
-  .rec-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:0 0 auto;}
-  .rec-seg-btn{
-    min-width:40px;min-height:38px;padding:6px 10px;
-    background:transparent;border:0;border-right:1px solid var(--line);
-    color:var(--gray);font-size:14px;font-weight:500;cursor:pointer;
-    transition:background .15s ease,color .15s ease;
-  }
-  .rec-seg-btn:last-child{border-right:0;}
-  .rec-seg-btn:hover{color:var(--off-white);background:rgba(var(--off-white-rgb),0.06);}
-  .rec-seg-btn.active{background:#5fbf7a;color:#0a0a0a;font-weight:700;cursor:default;}
   .panel-empty{color:var(--gray);font-size:13px;font-style:italic;}
 
   .status-pill{
@@ -479,30 +501,36 @@
   .section-divider{margin-top:56px;}
   .section-divider h3{font-size:20px;font-style:italic;font-weight:400;margin-bottom:20px;}
 
-  /* project workflow — sequential vertical stepper (admin) */
+  /* project workflow — grouped, collapsible stepper (admin) */
   .stepper{display:flex;flex-direction:column;margin-top:8px;}
-  .step{display:flex;gap:16px;align-items:flex-start;}
-  .step-marker{position:relative;flex-shrink:0;width:20px;display:flex;justify-content:center;}
-  .step-dot{
-    width:18px;height:18px;border-radius:50%;border:2px solid var(--line);background:var(--black);
-    z-index:1;margin-top:2px;display:flex;align-items:center;justify-content:center;
-    font-size:10px;line-height:1;color:var(--black);
+  .wf-progress{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+  .wf-progress-track{flex:1 1 auto;height:6px;border-radius:999px;background:var(--line);overflow:hidden;}
+  .wf-progress-fill{height:100%;background:#5fbf7a;border-radius:999px;transition:width .3s ease;}
+  .wf-progress-label{flex:0 0 auto;font-size:12px;color:var(--gray);white-space:nowrap;}
+  .wf-phases{display:flex;flex-direction:column;gap:14px;}
+  .wf-mark-all{
+    display:block;margin:0 0 12px auto;background:none;border:1px solid var(--line);color:var(--gray);
+    font-size:11px;text-transform:uppercase;letter-spacing:0.08em;padding:6px 12px;
+    border-radius:999px;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease;
   }
-  .step:not(:last-child) .step-marker::after{
-    content:"";position:absolute;top:18px;bottom:-4px;left:50%;transform:translateX(-50%);
-    width:2px;background:var(--line);
+  .wf-mark-all:hover{color:var(--off-white);border-color:var(--off-white);background:rgba(var(--off-white-rgb),0.06);}
+  /* Compact day-to-day widget: the ONE next pending step + a big tap target
+     to complete it — the thing actually touched every day, kept off the
+     "everything else is a popup" pattern below since it's not edited rarely. */
+  .wf-next{margin:4px 0 16px;padding:20px;border:1px solid var(--line);border-radius:8px;background:rgba(var(--off-white-rgb),0.03);}
+  .wf-next-label{font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--gray);}
+  .wf-next-step{font-size:17px;color:var(--off-white);font-weight:500;margin:8px 0 16px;line-height:1.4;}
+  .wf-next .btn{width:100%;}
+
+  /* one-line summary rows for sections edited rarely — full editor is a popup */
+  .proj-summary-row{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:16px 0;border-bottom:1px solid var(--line);
   }
-  .step-label{padding-bottom:22px;font-size:14px;color:var(--gray);line-height:1.45;}
-  .step.done{cursor:pointer;}
-  .step.done .step-dot{background:#5fbf7a;border-color:#5fbf7a;}
-  .step.done .step-marker::after{background:#5fbf7a;}
-  .step.done .step-label{color:var(--off-white);}
-  .step.current{cursor:pointer;}
-  .step.current .step-dot{border-color:var(--off-white);box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.16);}
-  .step.current .step-label{color:var(--off-white);font-weight:500;}
-  .step.locked{cursor:not-allowed;}
-  .step.locked .step-label{opacity:0.5;}
-  input[type="range"]{width:100%;accent-color:#5fbf7a;cursor:pointer;margin-top:6px;}
+  .proj-summary-row:last-child{border-bottom:none;}
+  .proj-summary-label{display:block;font-size:14px;color:var(--off-white);margin-bottom:4px;}
+  .proj-summary-value{font-size:13px;color:var(--gray);}
+  .proj-summary-row .btn-mini{flex:0 0 auto;}
 
   /* finance */
   .fin-yearbar{display:flex;align-items:center;gap:18px;margin-bottom:8px;}
@@ -587,8 +615,11 @@
   @keyframes modalFade{from{opacity:0;}to{opacity:1;}}
   .modal-box{
     background:var(--black);border:1px solid var(--line);border-radius:6px;
-    max-width:420px;width:100%;padding:32px;
+    max-width:420px;width:100%;padding:32px;max-height:85vh;overflow-y:auto;
   }
+  /* Content-heavy popups (full checklist, recording dates, payments) need
+     more room than a plain confirm/prompt dialog. */
+  .modal-box.modal-wide{max-width:720px;}
   .modal-box h3{font-size:22px;font-style:italic;font-weight:400;margin-bottom:12px;}
   .modal-box p{color:var(--gray);font-size:14px;line-height:1.6;margin-bottom:28px;}
   .modal-actions{display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;}
@@ -678,19 +709,19 @@
     .pay-admin-row{
       display:grid;align-items:center;gap:10px 12px;padding:14px 0;
       grid-template-columns:auto 1fr auto;
-      grid-template-areas:"num date date" "num amt paid";
+      grid-template-areas:"num date remove" "num amt paid";
     }
     .pay-admin-num{grid-area:num;align-self:center;}
     .pay-admin-row .date-field{grid-area:date;max-width:none;}
     .pay-date-box{width:100%;}
     .pay-amt-box{grid-area:amt;width:100%;}
     .pay-admin-paid{grid-area:paid;margin-left:0;}
-    /* Avulso/pontual rows add a description line + a remove button. */
+    .pay-admin-row .pay-remove-btn{grid-area:remove;justify-self:end;}
+    /* Avulso/pontual rows also add a description line. */
     .pay-admin-row.is-pontual{
       grid-template-areas:"num date remove" "num note note" "num amt paid";
     }
     .pay-admin-row.is-pontual .pay-note-box{grid-area:note;width:100%;}
-    .pay-admin-row.is-pontual .pay-remove-btn{grid-area:remove;justify-self:end;}
     /* Recording rows: label on its own line, then date + time dropdowns wrap below. */
     .rec-date-row{flex-wrap:wrap;gap:10px 12px;}
     .rec-date-row .rec-date-num{flex:1 1 100%;min-width:0;}

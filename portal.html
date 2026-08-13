@@ -316,45 +316,29 @@
     </div>
     <div id="adminContractHint" class="panel-empty" style="margin:-6px 0 22px;"></div>
 
-    <!-- Project workflow (sequential stepper) -->
-    <div class="section-divider" id="workflowSection">
+    <!-- Project workflow — compact widget: progress + the ONE next pending
+         step, big one-tap "Concluir" button. The full checklist (any-order,
+         grouped) opens in a modal for when she wants to jump around. -->
+    <div class="section-divider" id="fluxoBlock">
       <h3>Fluxo do projeto</h3>
-      <div class="field" id="recCountControls" style="max-width:360px;"></div>
-      <div class="stepper" id="workflowStepper"></div>
+      <div id="fluxoWidget"></div>
     </div>
 
-    <!-- Recording dates (optional) — shown to the client with an "add to calendar" button -->
-    <div class="section-divider" id="recDatesSection">
-      <h3>Datas de gravação</h3>
-      <div id="adminRecordingDates"></div>
-    </div>
-
-    <!-- Delivery date of the finished material — shown on the client's calendar -->
+    <!-- Everything edited rarely — condensed to a one-line summary + "Editar"
+         popup, instead of long always-open forms taking up the whole page. -->
     <div class="section-divider">
-      <h3>Entrega do material</h3>
-      <div class="field" style="max-width:220px;">
-        <label>Data prevista de entrega</label>
-        <div class="date-field"><input type="text" id="adminDeliveryDate" class="date-inp" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">📅</button></div>
+      <div class="proj-summary-row" id="recDatesRow">
+        <div><span class="proj-summary-label">🎬 Datas de gravação</span><p class="proj-summary-value" id="recDatesSummary"></p></div>
+        <button type="button" class="btn-mini" id="recDatesEditBtn">Editar</button>
       </div>
-    </div>
-
-    <!-- Resource links -->
-    <div class="section-divider" id="linksSection">
-      <h3>Links de recursos</h3>
-      <div class="field">
-        <label>Link da pasta do Google Drive</label>
-        <input type="url" id="adminDriveLink" placeholder="https://drive.google.com/...">
+      <div class="proj-summary-row">
+        <div><span class="proj-summary-label">💶 Pagamentos</span><p class="proj-summary-value" id="paymentsSummary"></p></div>
+        <button type="button" class="btn-mini" id="paymentsEditBtn">Editar</button>
       </div>
-    </div>
-
-    <!-- Payments -->
-    <div class="section-divider">
-      <h3>Pagamentos</h3>
-      <label id="adminSplitRow" class="hidden" style="display:flex;align-items:center;gap:10px;font-size:14px;margin:2px 0 14px;cursor:pointer;">
-        <input type="checkbox" id="adminSplitPayments" style="width:17px;height:17px;accent-color:#5fbf7a;">
-        Dividir em 3 pagamentos mensais (senão, pagamento único)
-      </label>
-      <div id="adminPaymentList" class="pay-admin-list"></div>
+      <div class="proj-summary-row">
+        <div><span class="proj-summary-label">📦 Entrega &amp; links</span><p class="proj-summary-value" id="detailsSummary"></p></div>
+        <button type="button" class="btn-mini" id="detailsEditBtn">Editar</button>
+      </div>
     </div>
 
     <div class="section-divider" style="margin-top:44px;">
@@ -376,6 +360,53 @@
       <div class="form-msg" id="adminDeleteProjectMsg"></div>
     </div>
   </section>
+
+  <!-- ===== Fluxo do projeto — full checklist popup ===== -->
+  <div class="modal-overlay hidden" id="workflowModal" role="dialog" aria-modal="true" aria-labelledby="workflowModalTitle">
+    <div class="modal-box modal-wide">
+      <h3 id="workflowModalTitle">Fluxo do projeto</h3>
+      <div id="workflowModalBody"></div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" data-modal-close>Fechar</button></div>
+    </div>
+  </div>
+
+  <!-- ===== Datas de gravação popup ===== -->
+  <div class="modal-overlay hidden" id="recDatesModal" role="dialog" aria-modal="true" aria-labelledby="recDatesModalTitle">
+    <div class="modal-box modal-wide">
+      <h3 id="recDatesModalTitle">Datas de gravação</h3>
+      <div id="adminRecordingDates"></div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" data-modal-close>Fechar</button></div>
+    </div>
+  </div>
+
+  <!-- ===== Pagamentos popup ===== -->
+  <div class="modal-overlay hidden" id="paymentsModal" role="dialog" aria-modal="true" aria-labelledby="paymentsModalTitle">
+    <div class="modal-box modal-wide">
+      <h3 id="paymentsModalTitle">Pagamentos</h3>
+      <label id="adminSplitRow" class="hidden" style="display:flex;align-items:center;gap:10px;font-size:14px;margin:2px 0 14px;cursor:pointer;">
+        <input type="checkbox" id="adminSplitPayments" style="width:17px;height:17px;accent-color:#5fbf7a;">
+        Dividir em 3 pagamentos mensais (senão, pagamento único)
+      </label>
+      <div id="adminPaymentList" class="pay-admin-list"></div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" data-modal-close>Fechar</button></div>
+    </div>
+  </div>
+
+  <!-- ===== Entrega & links popup ===== -->
+  <div class="modal-overlay hidden" id="detailsModal" role="dialog" aria-modal="true" aria-labelledby="detailsModalTitle">
+    <div class="modal-box">
+      <h3 id="detailsModalTitle">Entrega &amp; links</h3>
+      <div class="field">
+        <label>Datas previstas de entrega</label>
+        <div id="adminDeliveryDates"></div>
+      </div>
+      <div class="field" id="linksSection">
+        <label>Link da pasta do Google Drive</label>
+        <input type="url" id="adminDriveLink" placeholder="https://drive.google.com/...">
+      </div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" data-modal-close>Fechar</button></div>
+    </div>
+  </div>
 
   <!-- ===================== ADMIN: A RECEBER (DÍVIDAS) VIEW ===================== -->
   <section id="view-admin-debts" class="hidden">
