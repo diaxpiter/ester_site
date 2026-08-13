@@ -365,7 +365,6 @@
   <div class="modal-overlay hidden" id="workflowModal" role="dialog" aria-modal="true" aria-labelledby="workflowModalTitle">
     <div class="modal-box modal-wide">
       <h3 id="workflowModalTitle">Fluxo do projeto</h3>
-      <div class="field" id="recCountControls" style="max-width:360px;"></div>
       <div id="workflowModalBody"></div>
       <div class="modal-actions"><button type="button" class="btn btn-ghost" data-modal-close>Fechar</button></div>
     </div>
@@ -397,9 +396,9 @@
   <div class="modal-overlay hidden" id="detailsModal" role="dialog" aria-modal="true" aria-labelledby="detailsModalTitle">
     <div class="modal-box">
       <h3 id="detailsModalTitle">Entrega &amp; links</h3>
-      <div class="field" style="max-width:220px;">
-        <label>Data prevista de entrega</label>
-        <div class="date-field"><input type="text" id="adminDeliveryDate" class="date-inp" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">📅</button></div>
+      <div class="field">
+        <label>Datas previstas de entrega</label>
+        <div id="adminDeliveryDates"></div>
       </div>
       <div class="field" id="linksSection">
         <label>Link da pasta do Google Drive</label>

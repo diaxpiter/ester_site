@@ -2,7 +2,7 @@
 // Goal: make the portal installable + fast, WITHOUT breaking Firebase.
 // Strategy: only touch same-origin GET requests. Firestore/Auth/Google Fonts
 // (cross-origin) pass straight through, untouched, so live data is never stale.
-const CACHE = 'ester-v15';
+const CACHE = 'ester-v16';
 const SHELL = [
   'portal.html',
   'index.html',
@@ -49,19 +49,26 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return;        // let Firebase/fonts pass through
 
   // HTML: network-first (always try fresh), fall back to cache when offline.
+  // {cache:'reload'} bypasses the browser's own HTTP cache so this is a real
+  // revalidation, not just a replay of whatever was last fetched.
   if (req.mode === 'navigate' || req.destination === 'document') {
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'reload' })
         .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; })
         .catch(() => caches.match(req).then((r) => r || caches.match(url.pathname.indexOf('portal') !== -1 ? 'portal.html' : 'index.html')))
     );
     return;
   }
 
-  // Static assets (images/css/js): cache-first for speed, update in background.
+  // Static assets (images/css/js): cache-first for speed, revalidate in the
+  // background. {cache:'reload'} on the revalidation fetch is what actually
+  // matters here — without it, this would just re-ask the BROWSER's own HTTP
+  // cache (still "fresh" for up to 7 days per firebase.json), silently
+  // re-saving the same stale bytes into the SW cache instead of the real
+  // latest deploy.
   e.respondWith(
     caches.match(req).then((cached) => {
-      const network = fetch(req).then((res) => {
+      const network = fetch(req, { cache: 'reload' }).then((res) => {
         if (res && res.status === 200) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
         return res;
       }).catch(() => cached);

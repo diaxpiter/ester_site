@@ -185,6 +185,23 @@
   .rec-status.today{background:rgba(240,162,75,0.12);color:#f0a24b;}
   .rec-status.overdue{background:rgba(229,87,63,0.12);color:var(--red);}
 
+  /* client: "Fluxo do projeto" timeline — Início → Pagamento → Roteirização →
+     Gravação → Edição → Entrega, a coarser client-facing read of the admin's
+     own step-by-step workflow (see core.js projectFlowStage). */
+  .flow-timeline{
+    display:flex;align-items:flex-start;overflow-x:auto;padding-bottom:2px;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+  }
+  .flow-timeline::-webkit-scrollbar{display:none;}
+  .flow-step{display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 auto;min-width:74px;}
+  .flow-dot{width:12px;height:12px;border-radius:50%;background:var(--line);border:2px solid var(--line);flex:0 0 auto;transition:background .2s ease,border-color .2s ease;}
+  .flow-step.done .flow-dot{background:#5fbf7a;border-color:#5fbf7a;}
+  .flow-step.current .flow-dot{background:var(--black);border-color:#5fbf7a;box-shadow:0 0 0 3px rgba(95,191,122,0.25);}
+  .flow-label{font-size:11px;color:var(--gray);text-align:center;white-space:nowrap;}
+  .flow-step.done .flow-label, .flow-step.current .flow-label{color:var(--off-white);}
+  .flow-connector{flex:1 1 24px;height:2px;background:var(--line);margin-top:5px;min-width:16px;}
+  .flow-step.done + .flow-connector{background:#5fbf7a;}
+
   /* client: project carousel */
   .proj-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:16px;}
   .carousel-nav{display:flex;gap:8px;}
@@ -234,10 +251,9 @@
     background:rgba(95,191,122,0.08);padding:4px 12px;border-radius:999px;
   }
   .wf-done{margin-top:16px;color:#5fbf7a;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;}
-  /* admin: branched (3-month) workflow — "Comum" box + 3 month boxes, accordion
+  /* admin: branched (3-month) workflow — 3 month boxes, accordion
      (only one expanded at a time via admin-clients.js's openWfGroup) */
   .wf-hint{font-size:13px;color:var(--gray);margin-bottom:16px;}
-  .wf-common{margin-bottom:16px;}
   .wf-months{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
   @media(max-width:760px){.wf-months{grid-template-columns:1fr;}}
   .wf-month{border:1px solid var(--line);border-radius:6px;overflow:hidden;}
@@ -400,24 +416,6 @@
   .pay-admin-paid input{width:16px;height:16px;accent-color:#5fbf7a;flex-shrink:0;cursor:pointer;}
   .dash-line{display:block;line-height:1.9;}
   .dash-key{color:var(--gray);}
-  .rec-count-row{display:flex;align-items:center;gap:14px;margin:10px 0;}
-  /* 3 month columns side by side (desktop), stacked full-width on mobile — same
-     breakpoint as .wf-months so both pieces of the monthly workflow UI match. */
-  .rec-count-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:10px 0;}
-  @media(max-width:760px){.rec-count-grid{grid-template-columns:1fr;}}
-  .rec-count-col{display:flex;flex-direction:column;gap:8px;}
-  .rec-count-mo{font-size:13px;color:var(--gray);}
-  /* 1/2/3 segmented control (replaces the old range slider for this small discrete choice) */
-  .rec-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:0 0 auto;}
-  .rec-seg-btn{
-    min-width:40px;min-height:38px;padding:6px 10px;
-    background:transparent;border:0;border-right:1px solid var(--line);
-    color:var(--gray);font-size:14px;font-weight:500;cursor:pointer;
-    transition:background .15s ease,color .15s ease;
-  }
-  .rec-seg-btn:last-child{border-right:0;}
-  .rec-seg-btn:hover{color:var(--off-white);background:rgba(var(--off-white-rgb),0.06);}
-  .rec-seg-btn.active{background:#5fbf7a;color:#0a0a0a;font-weight:700;cursor:default;}
   .panel-empty{color:var(--gray);font-size:13px;font-style:italic;}
 
   .status-pill{
@@ -711,19 +709,19 @@
     .pay-admin-row{
       display:grid;align-items:center;gap:10px 12px;padding:14px 0;
       grid-template-columns:auto 1fr auto;
-      grid-template-areas:"num date date" "num amt paid";
+      grid-template-areas:"num date remove" "num amt paid";
     }
     .pay-admin-num{grid-area:num;align-self:center;}
     .pay-admin-row .date-field{grid-area:date;max-width:none;}
     .pay-date-box{width:100%;}
     .pay-amt-box{grid-area:amt;width:100%;}
     .pay-admin-paid{grid-area:paid;margin-left:0;}
-    /* Avulso/pontual rows add a description line + a remove button. */
+    .pay-admin-row .pay-remove-btn{grid-area:remove;justify-self:end;}
+    /* Avulso/pontual rows also add a description line. */
     .pay-admin-row.is-pontual{
       grid-template-areas:"num date remove" "num note note" "num amt paid";
     }
     .pay-admin-row.is-pontual .pay-note-box{grid-area:note;width:100%;}
-    .pay-admin-row.is-pontual .pay-remove-btn{grid-area:remove;justify-self:end;}
     /* Recording rows: label on its own line, then date + time dropdowns wrap below. */
     .rec-date-row{flex-wrap:wrap;gap:10px 12px;}
     .rec-date-row .rec-date-num{flex:1 1 100%;min-width:0;}

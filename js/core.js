@@ -85,8 +85,8 @@ export const WORKFLOW_PHASES = [
   { name: 'Pós-produção', steps: ['Edição do material', 'PDF de apresentação final'] }
 ];
 export const MONTHLY_MONTH_LABELS = ['1º mês', '2º mês', '3º mês'];
-export const REC_MIN = 1, REC_MAX = 3;   // recordings are limited to 1–3 (per month for monthly packs)
-export const clampRec = n => Math.min(REC_MAX, Math.max(REC_MIN, Number(n) || REC_MIN));
+export const REC_MIN = 1;   // at least 1 recording; no upper cap — admin adds more freely
+export const clampRec = n => Math.max(REC_MIN, Number(n) || REC_MIN);
 // True when a project uses the branched 3-month workflow (monthly packs).
 export function isMonthlyWorkflow(p){
   const pack = p && p.pack ? PACKS[p.pack] : null;
@@ -107,14 +107,19 @@ export function isCustomPontualWorkflow(p){
 }
 // Per-month recording counts [m1, m2, m3] for a monthly project. `override` (an
 // array) wins; then the saved `recordingCounts`; then a legacy flat `recordingCount`
-// repeated across the 3 months. Each value clamped to 1–3.
+// repeated across the 3 months. No upper cap — the admin adds sessions freely via
+// the "+ Adicionar gravação" button on each month's card; an explicit 0 (every
+// session removed) is kept as 0, a genuinely missing entry defaults to 1.
 export function monthlyRecCounts(p, override){
   let arr;
   if(Array.isArray(override)) arr = override;
   else if(Array.isArray(p.recordingCounts)) arr = p.recordingCounts;
   else { const flat = p.recordingCount || 1; arr = [flat, flat, flat]; }
   const out = [];
-  for(let m = 0; m < MONTHLY_BATCH_MONTHS; m++) out.push(clampRec(arr[m]));
+  for(let m = 0; m < MONTHLY_BATCH_MONTHS; m++){
+    const v = arr[m];
+    out.push(v == null ? 1 : Math.max(0, Number(v) || 0));
+  }
   return out;
 }
 // Ordered workflow steps for a project. Monthly (3-month) packs get the branched
@@ -124,8 +129,7 @@ export function monthlyRecCounts(p, override){
 export function workflowModel(p, override){
   if(isPontualWorkflow(p)) return []; // avulso packs: payments only, no checklist
   if(!isMonthlyWorkflow(p)){
-    const flat = (typeof override === 'number') ? override : (p.recordingCount || 1);
-    const rec = clampRec(flat);
+    const rec = Math.max(0, (typeof override === 'number') ? override : (p.recordingCount || 1));
     const steps = [];
     let i = 0;
     WORKFLOW_PHASES[0].steps.forEach(label => steps.push({ key: 's' + (i++), label, group: WORKFLOW_PHASES[0].name }));
@@ -134,23 +138,17 @@ export function workflowModel(p, override){
     WORKFLOW_PHASES[2].steps.forEach(label => steps.push({ key: 's' + (i++), label, group: WORKFLOW_PHASES[2].name }));
     return steps;
   }
+  // No "Comum" head here on purpose — those steps (proposal meeting, contract
+  // data, sending the contract) always happen BEFORE the project is created on
+  // the platform, so they're never tracked as in-platform workflow steps.
   const counts = monthlyRecCounts(p, override);
-  const steps = [
-    { key: 'h0', label: 'Reunião para apresentar proposta', group: 'Comum' },
-    { key: 'h1', label: 'Solicitar dados para contrato',    group: 'Comum' },
-    { key: 'h2', label: 'Envio do contrato',                group: 'Comum' }
-  ];
+  const steps = [];
   for(let m = 1; m <= MONTHLY_BATCH_MONTHS; m++){
     const mo = MONTHLY_MONTH_LABELS[m - 1] || (m + 'º mês');
     const g = 'Mês ' + m;
     const rec = counts[m - 1];
     steps.push({ key: `m${m}-pay`, label: `Pagamento ${m} recebido`, group: g });
-    steps.push({ key: `m${m}-rec`, label: `Emissão do recibo ${m}`,  group: g });
-    if(m === 1){
-      steps.push({ key: 'drive',  label: 'Pasta do projeto no Drive', group: g });
-      steps.push({ key: 'trello', label: 'Organização do projeto',    group: g });
-    }
-    steps.push({ key: `m${m}-brain`, label: `Reunião para brainstorm (${mo})`, group: g });
+    steps.push({ key: `m${m}-script`, label: `Roteirização (${mo})`, group: g });
     steps.push({ key: `m${m}-ref`,   label: `PDF com referências (${mo})`,     group: g });
     for(let r = 1; r <= rec; r++){
       steps.push({ key: `m${m}-grav${r}`, label: rec > 1 ? `Gravação ${r} (${mo})` : `Gravação (${mo})`, group: g });
@@ -179,9 +177,45 @@ export function isProjectComplete(p){
   const s = workflowStats(p);
   return s.total > 0 && s.done >= s.total;
 }
+// Simplified client-facing stage names — a lot coarser than the admin's own
+// step-by-step checklist (which mixes in admin-only bookkeeping), used for the
+// client dashboard's "Fluxo do projeto" timeline.
+export const FLOW_STAGES = ['Início', 'Pagamento', 'Roteirização', 'Gravação', 'Edição', 'Entrega'];
+// Which of the 6 FLOW_STAGES a project is currently at, derived from the
+// admin's own workflow progress. -1 for avulso/pontual packs, which have no
+// production workflow at all (payment-only) — callers should hide the
+// timeline entirely in that case. "Início" is implicitly already passed the
+// moment a project exists, so the returned index is whichever stage is
+// actually in progress (the first not-yet-done step maps onto it), not a
+// stage that still needs to happen before the next one starts.
+export function projectFlowStage(p){
+  if(isPontualWorkflow(p)) return -1;
+  const monthly = isMonthlyWorkflow(p);
+  const model = workflowModel(p, monthly ? monthlyRecCounts(p) : (p.recordingCount || 0));
+  if(!model.length) return -1;
+  const done = workflowDoneSet(p);
+  const next = model.find(s => !done.has(s.key));
+  if(!next) return 5; // every step done => Entrega
+  if(monthly){
+    if(next.key.endsWith('-pay')) return 1;
+    if(next.key.endsWith('-script') || next.key.endsWith('-ref')) return 2;
+    if(next.key.includes('-grav')) return 3;
+    if(next.key.endsWith('-edit') || next.key.endsWith('-final')) return 4;
+    return 0;
+  }
+  if(next.group === 'Contrato & Pagamento') return /pagamento|recibo/i.test(next.label) ? 1 : 0;
+  if(next.group === 'Preparação') return 2;
+  if(next.group === 'Gravação') return 3;
+  if(next.group === 'Pós-produção') return 4;
+  return 0;
+}
 // Recording "slots" for a project (each gets a schedulable date + calendar button).
-// Monthly (3-month) packs get recordings PER MONTH (3 × per-month count); other
-// packs get a flat list. `idx` is the flat index into the stored recordingDates array.
+// Monthly (3-month) packs get recordings PER MONTH (3 × per-month count, open-ended
+// — the admin adds/removes sessions per month freely). Every other pack gets a flat,
+// open-ended list driven by however many recording dates exist (or are being
+// edited) — same add/remove pattern used to be exclusive to "Trabalho
+// Personalizado" and is now how every non-monthly pack works. `idx` is the flat
+// index into the stored recordingDates array.
 export function recordingSlots(p, override){
   const slots = [];
   if(isMonthlyWorkflow(p)){
@@ -193,15 +227,9 @@ export function recordingSlots(p, override){
         slots.push({ idx: slots.length, month: m, label: rec > 1 ? `Gravação ${r} (${mo})` : `Gravação (${mo})` });
       }
     }
-  } else if(isCustomPontualWorkflow(p)){
-    // Open-ended — count comes from however many dates exist (or are being
-    // edited), not a capped 1-3 slider. Admin add/remove rows freely, like
-    // the pontual open-ended payment list.
+  } else {
     const n = Array.isArray(p.recordingDates) ? p.recordingDates.length : 0;
     for(let r = 1; r <= n; r++) slots.push({ idx: slots.length, label: `Gravação ${r}` });
-  } else {
-    const rec = clampRec((typeof override === 'number') ? override : (p.recordingCount || 1));
-    for(let r = 1; r <= rec; r++) slots.push({ idx: slots.length, label: `Gravação ${r}` });
   }
   return slots;
 }
@@ -306,6 +334,14 @@ export function projectPaymentDates(p){
   const n = (isMonthly && split) ? MONTHLY_BATCH_MONTHS : 1;
   return Array.from({ length: n }, (_, i) => addMonthsIso(p.paymentDue, i));
 }
+// A project's delivery dates. Uses the stored `deliveryDates` array when present
+// (admin adds/removes batches freely, like payments/recordings). Falls back to
+// the legacy single `deliveryDate` field for projects saved before this existed.
+export function projectDeliveryDates(p){
+  if(Array.isArray(p.deliveryDates)) return p.deliveryDates;
+  return p.deliveryDate ? [p.deliveryDate] : [];
+}
+
 // Numeric price of a pack (e.g. "495€" -> 495). 0 if unknown.
 export function packPriceNumber(packId){
   const p = packId ? PACKS[packId] : null;

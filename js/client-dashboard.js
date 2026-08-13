@@ -5,6 +5,7 @@ import { onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/1
 import {
   db, show, msg, escapeHtml, escapeAttr, getProjects, isProjectComplete,
   formatDatePt, paymentStatus, daysUntil, addMonthsIso, projectPaymentDates,
+  projectDeliveryDates, FLOW_STAGES, projectFlowStage,
   PACKS, MONTHLY_BATCH_MONTHS, recordingSlots, CAL_SVG, GOOGLE_REVIEW_LINK
 } from './core.js';
 
@@ -233,7 +234,10 @@ function projectCalendarEvents(p){
     const label = payDates.length > 1 ? `Pagamento ${i + 1}/${payDates.length}` : 'Pagamento';
     events.push({ iso, type: paidArr[i] ? 'paid' : 'payment', label });
   });
-  if(p.deliveryDate) events.push({ iso: p.deliveryDate, type: 'delivery', label: 'Entrega do material' });
+  const deliveryDates = projectDeliveryDates(p).filter(Boolean);
+  deliveryDates.forEach((iso, i) => {
+    events.push({ iso, type: 'delivery', label: deliveryDates.length > 1 ? `Entrega ${i + 1}` : 'Entrega do material' });
+  });
   return events;
 }
 // First render defaults to the earliest event still today-or-later, so the
@@ -325,6 +329,24 @@ document.addEventListener('toggle', (e) => {
   }
 }, true);
 
+// "Fluxo do projeto" — a coarse, client-facing timeline (Início → Pagamento →
+// Roteirização → Gravação → Edição → Entrega) derived from the admin's own
+// step-by-step workflow. Hidden for avulso/pontual projects (no production
+// workflow to summarize — projectFlowStage returns -1 there).
+function clientTimelineHtml(p){
+  const stage = projectFlowStage(p);
+  if(stage < 0) return '';
+  const steps = FLOW_STAGES.map((label, i) => {
+    const cls = i < stage ? ' done' : (i === stage ? ' current' : '');
+    return `<div class="flow-step${cls}"><span class="flow-dot"></span><span class="flow-label">${escapeHtml(label)}</span></div>`;
+  }).join('<span class="flow-connector"></span>');
+  return `
+    <div class="rec-section">
+      <div class="pay-title">Fluxo do projeto</div>
+      <div class="flow-timeline">${steps}</div>
+    </div>`;
+}
+
 function clientProjectCard(p){
   const pack = p.pack ? PACKS[p.pack] : null;
   const period = projectPeriod(p);
@@ -339,6 +361,7 @@ function clientProjectCard(p){
       </div>
       <p class="proj-plan">${pack ? escapeHtml(pack.name) : 'A combinar'}</p>
       ${period ? `<p class="proj-period">${period}</p>` : ''}
+      ${clientTimelineHtml(p)}
       ${projectCalendarHtml(p)}
       <div class="rec-section">
         <div class="pay-title">Materiais</div>

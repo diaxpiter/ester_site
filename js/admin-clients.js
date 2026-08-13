@@ -14,8 +14,8 @@ import {
 import {
   db, escapeHtml, escapeAttr, getISO, setISO, enhanceDateField, formatDatePt,
   addMonthsIso, packPriceNumber, PACKS, MONTHLY_BATCH_MONTHS, MONTHLY_MONTH_LABELS,
-  clampRec, isMonthlyWorkflow, isPontualWorkflow, isCustomPontualWorkflow, monthlyRecCounts, workflowModel, workflowDoneSet,
-  isProjectComplete, recordingSlots, projectPaymentDates, paymentStatus,
+  isMonthlyWorkflow, isPontualWorkflow, isCustomPontualWorkflow, monthlyRecCounts, workflowModel, workflowDoneSet,
+  isProjectComplete, recordingSlots, projectPaymentDates, projectDeliveryDates, paymentStatus,
   genId, clientLink, msg, toast, show, askConfirm, CAL_SVG,
   openGoogleCalendarEvent, pad2, setAdminHash, ADMIN_EMAIL, getProjects
 } from './core.js';
@@ -159,14 +159,15 @@ let currentPaymentsPaid = [];   // paid flags for the project being edited
 let currentPaymentAmounts = []; // editable € value per instalment
 let currentPaymentNotes = [];   // per-instalment description (pontual/avulso packs only)
 let currentProjectId = null;  // project being edited
-let currentRecordingCount = 2;    // recordings for a linear (non-monthly) project (1–3)
-let currentRecordingCounts = [2, 2, 2];  // recordings PER MONTH for a monthly project (each 1–3)
+let currentProjectIsNew = false; // whether the open project has never been saved (drives one-time defaults)
+let currentRecordingCounts = [1, 1, 1];  // recordings PER MONTH for a monthly project (open-ended, default 1)
 let currentWorkflowDone = new Set(); // completed step keys for the project being edited (every pack type)
-let openWfGroup = null; // which single box (Comum or a month) is expanded in the branched stepper accordion
+let openWfGroup = null; // which month box is expanded in the branched stepper accordion
 let openWfGroupSet = false; // whether openWfGroup has been chosen yet (default vs. explicitly closed-to-null)
-let currentRecordingDates = [];   // ISO date per recording for the project being edited
+let currentRecordingDates = [];   // ISO date per recording for the project being edited (flat, open-ended)
 let currentRecordingTimes = [];   // optional HH:MM start time per recording (aligned with dates)
 let currentRecordingEndTimes = []; // optional HH:MM end time per recording (aligned with dates)
+let currentDeliveryDates = [];    // ISO delivery/batch dates for the project being edited (open-ended)
 
 // World nationalities (Portuguese). Populated once into the admin dropdown.
 const NATIONALITIES = [
@@ -324,16 +325,26 @@ function updateProjectFormVisibility(){
 }
 document.getElementById('adminPack').addEventListener('change', () => {
   captureRecordingDates();   // keep typed dates when the slot layout changes
-  const pack = PACKS[document.getElementById('adminPack').value];
+  const packVal = document.getElementById('adminPack').value;
+  const pack = PACKS[packVal];
+  const isMonthly = !!(pack && pack.category === 'monthly');
   // Default a monthly pack to split (3), reset otherwise.
-  document.getElementById('adminSplitPayments').checked = !!(pack && pack.category === 'monthly');
+  document.getElementById('adminSplitPayments').checked = isMonthly;
   currentPaymentAmounts = []; // let the new pack's price drive the suggested amounts
+  if(!isPontualWorkflow({ pack: packVal })){
+    seedPaymentRows(isMonthly ? MONTHLY_BATCH_MONTHS : 1);
+  }
+  // A brand-new (never-saved) project defaults to 1 recording session — once
+  // real data exists (edited project), never silently overwrite it here.
+  if(currentProjectIsNew){
+    if(isMonthly && currentRecordingCounts.every(n => !n)) currentRecordingCounts = [1, 1, 1];
+    if(!isMonthly && !isPontualWorkflow({ pack: packVal }) && currentRecordingDates.length === 0) currentRecordingDates = [''];
+  }
   autofillMonthlyDates();
   updateContractHint();
   updateProjectFormVisibility();
   renderPaymentList();
   refreshPaymentsSummary();
-  renderRecordingCountControls();  // switch between single slider and per-month sliders
   refreshWorkflow();        // switch between linear and branched (monthly) workflow
   renderRecordingDates();   // switch between flat and per-month recording dates
   refreshRecDatesSummary();
@@ -341,15 +352,23 @@ document.getElementById('adminPack').addEventListener('change', () => {
 document.getElementById('adminContractStart').addEventListener('change', updateContractHint);
 
 // How many payments the project currently has (also toggles the split row).
-// Avulso/pontual packs are open-ended — the admin adds/removes rows freely,
-// one per one-off service — instead of a count derived from the pack.
+// Every pack is open-ended now — the pack/split checkbox only decides the
+// SEEDED default row count (see seedPaymentRows); the admin can always
+// add/remove rows freely from there, same as "Trabalho Personalizado" always did.
 function paymentCount(){
   const pack = PACKS[document.getElementById('adminPack').value];
   const isMonthly = !!(pack && pack.category === 'monthly');
   document.getElementById('adminSplitRow').classList.toggle('hidden', !isMonthly);
-  if(isPontualWorkflow({ pack: document.getElementById('adminPack').value })) return currentPaymentDates.length;
-  const split = document.getElementById('adminSplitPayments').checked;
-  return (isMonthly && split) ? MONTHLY_BATCH_MONTHS : 1;
+  return currentPaymentDates.length;
+}
+// Grows (never shrinks) the payment-row arrays to at least `n` rows, so a
+// fresh pack selection (or the split toggle) shows its usual default count
+// without ever discarding rows the admin already added/typed into.
+function seedPaymentRows(n){
+  while(currentPaymentDates.length < n) currentPaymentDates.push('');
+  while(currentPaymentsPaid.length < n) currentPaymentsPaid.push(false);
+  while(currentPaymentAmounts.length < n) currentPaymentAmounts.push('');
+  while(currentPaymentNotes.length < n) currentPaymentNotes.push('');
 }
 // Convenience: fill any empty later dates from the 1st, one month apart (monthly only).
 function autofillMonthlyDates(){
@@ -400,12 +419,10 @@ function renderPaymentList(){
       <input type="number" class="pay-amt-box" data-idx="${i}" value="${amt}" min="0" step="0.01" placeholder="€" aria-label="Valor (€)">
       ${pontual ? `<input type="text" class="pay-note-box" data-idx="${i}" value="${escapeAttr(note)}" placeholder="Descrição do serviço" aria-label="Descrição do serviço">` : ''}
       <label class="pay-admin-paid"><input type="checkbox" class="pay-paid-box" data-idx="${i}"${paid ? ' checked' : ''}> Pago</label>
-      ${pontual ? `<button type="button" class="pay-remove-btn" data-idx="${i}" aria-label="Remover este pagamento" title="Remover">✕</button>` : ''}
+      <button type="button" class="pay-remove-btn" data-idx="${i}" aria-label="Remover este pagamento" title="Remover">✕</button>
     </div>`;
   }
-  if(pontual){
-    html += `<button type="button" class="btn btn-ghost" id="adminAddPaymentBtn" style="margin-top:10px;">+ Adicionar pagamento</button>`;
-  }
+  html += `<button type="button" class="btn btn-ghost" id="adminAddPaymentBtn" style="margin-top:10px;">+ Adicionar pagamento</button>`;
   el.innerHTML = html;
   // Display dates as dd/mm/aaaa and wire keyboard mask + calendar per row.
   el.querySelectorAll('.pay-date-box').forEach(inp => { setISO(inp, inp.dataset.iso); enhanceDateField(inp); });
@@ -460,6 +477,10 @@ function renderPaymentList(){
   }
 }
 document.getElementById('adminSplitPayments').addEventListener('change', () => {
+  const pack = PACKS[document.getElementById('adminPack').value];
+  const isMonthly = !!(pack && pack.category === 'monthly');
+  const split = document.getElementById('adminSplitPayments').checked;
+  seedPaymentRows((isMonthly && split) ? MONTHLY_BATCH_MONTHS : 1);
   autofillMonthlyDates();
   renderPaymentList();
 });
@@ -477,7 +498,7 @@ function currentMonthIndex(){
 }
 // Small icon per workflow group, purely visual (quick scanning, not data).
 const WF_GROUP_ICONS = {
-  'Comum': '📄', 'Contrato & Pagamento': '📄', 'Preparação': '🗂️',
+  'Contrato & Pagamento': '📄', 'Preparação': '🗂️',
   'Gravação': '🎬', 'Pós-produção': '🎞️'
 };
 function wfGroupIcon(name){
@@ -496,7 +517,7 @@ function currentOpenGroup(groups){
 function workflowGroups(){
   const packId = document.getElementById('adminPack').value;
   const monthly = isMonthlyWorkflow({ pack: packId });
-  const model = workflowModel({ pack: packId }, monthly ? currentRecordingCounts : currentRecordingCount);
+  const model = workflowModel({ pack: packId }, currentRecOverride());
   const groups = [];
   model.forEach(s => {
     let g = groups.find(x => x.name === s.group);
@@ -545,9 +566,9 @@ function renderFluxoWidget(){
   });
   document.getElementById('wfSeeAllBtn').addEventListener('click', () => openModal('workflowModal'));
 }
-// Full checklist popup: a "Comum" block + 3 month boxes for monthly packs, a
-// flat sequence of phase boxes (Contrato & Pagamento → Preparação → Gravação
-// → Pós-produção) for everything else. Steps are big, full-width tap targets
+// Full checklist popup: 3 month boxes for monthly packs, a flat sequence of
+// phase boxes (Contrato & Pagamento → Preparação → Gravação → Pós-produção)
+// for everything else. Steps are big, full-width tap targets
 // (not tiny checkboxes — easy to miss on a phone) toggleable in any order,
 // and each box has a one-tap "Marcar tudo" to close out a whole phase at
 // once. Accordion: only one box open at a time.
@@ -576,10 +597,7 @@ function renderWorkflowModal(){
   };
   let html = '';
   if(monthly){
-    const common = groups.find(g => g.name === 'Comum');
-    const months = groups.filter(g => g.name.indexOf('Mês') === 0);
-    if(common) html += `<div class="wf-common">${box(common)}</div>`;
-    html += '<div class="wf-months">' + months.map(box).join('') + '</div>';
+    html += '<div class="wf-months">' + groups.map(box).join('') + '</div>';
   } else {
     html += '<div class="wf-phases">' + groups.map(box).join('') + '</div>';
   }
@@ -618,50 +636,12 @@ function refreshWorkflow(){
   renderWorkflowModal();
 }
 // The current recording-count override to feed workflowModel/recordingSlots:
-// a per-month array for monthly packs, a single number otherwise.
+// a per-month array for monthly packs, a single number (the flat slot count)
+// otherwise — derived straight from however many dates exist, since there's
+// no separate slider anymore (see addRecordingSlot/removeRecordingSlot).
 function currentRecOverride(){
   return isMonthlyWorkflow({ pack: document.getElementById('adminPack').value })
-    ? currentRecordingCounts : currentRecordingCount;
-}
-// Recording-count control(s): a 1/2/3 segmented control per month for monthly
-// packs, a single one otherwise. Replaces the old range sliders — for a 1–3
-// discrete choice a slider forces a drag gesture just to see/set 3 possible
-// values; tapping the number directly is faster and the current value reads
-// at a glance across all 3 months without hunting for a thumb's position.
-// Re-rendered on open + pack change.
-function renderRecordingCountControls(){
-  const el = document.getElementById('recCountControls');
-  if(!el) return;
-  const monthly = isMonthlyWorkflow({ pack: document.getElementById('adminPack').value });
-  const seg = (val, m, label) => `<div class="rec-seg" role="group" aria-label="${escapeAttr(label)}">` +
-    [1, 2, 3].map(n => `<button type="button" class="rec-seg-btn${n === val ? ' active' : ''}" data-m="${m}" data-v="${n}">${n}</button>`).join('') +
-    '</div>';
-  if(monthly){
-    el.innerHTML = `<label style="margin-bottom:12px;">Número de gravações por mês (1 a 3):</label>
-      <div class="rec-count-grid">` +
-      MONTHLY_MONTH_LABELS.map((mo, i) => `
-        <div class="rec-count-col">
-          <span class="rec-count-mo">${mo}</span>
-          ${seg(currentRecordingCounts[i], i, `Gravações em ${mo}`)}
-        </div>`).join('') +
-      '</div>';
-  } else {
-    el.innerHTML = `<label style="margin-bottom:12px;">Número de gravações (visitas):</label>
-      <div class="rec-count-row">${seg(currentRecordingCount, 'flat', 'Número de gravações')}</div>`;
-  }
-  el.querySelectorAll('.rec-seg-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if(btn.classList.contains('active')) return;
-      captureRecordingDates();
-      const v = clampRec(btn.dataset.v);
-      if(btn.dataset.m === 'flat') currentRecordingCount = v;
-      else currentRecordingCounts[Number(btn.dataset.m)] = v;
-      renderRecordingCountControls();
-      refreshWorkflow();
-      renderRecordingDates();
-      refreshRecDatesSummary();
-    });
-  });
+    ? currentRecordingCounts : currentRecordingDates.length;
 }
 
 // ---------- recording dates (one date field per gravação) ----------
@@ -687,12 +667,40 @@ function captureRecordingDates(){
     currentRecordingEndTimes[Number(sel.dataset.idx)] = sel.value || '';
   });
 }
+// Adds one empty recording slot. For a monthly pack, `month` (1-3) says which
+// month's card it belongs to — the new date is spliced right after that
+// month's existing slots so the flat arrays stay ordered month-by-month;
+// `month` is null for the flat (non-monthly) list, which just appends.
+function addRecordingSlot(month){
+  captureRecordingDates();
+  let insertAt = currentRecordingDates.length;
+  if(month){
+    insertAt = 0;
+    for(let m = 1; m <= month; m++) insertAt += currentRecordingCounts[m - 1];
+    currentRecordingCounts[month - 1]++;
+  }
+  currentRecordingDates.splice(insertAt, 0, '');
+  currentRecordingTimes.splice(insertAt, 0, '');
+  currentRecordingEndTimes.splice(insertAt, 0, '');
+  renderRecordingDates();
+  refreshWorkflow();
+  refreshRecDatesSummary();
+}
+function removeRecordingSlot(idx, month){
+  captureRecordingDates();
+  currentRecordingDates.splice(idx, 1);
+  currentRecordingTimes.splice(idx, 1);
+  currentRecordingEndTimes.splice(idx, 1);
+  if(month) currentRecordingCounts[month - 1] = Math.max(0, currentRecordingCounts[month - 1] - 1);
+  renderRecordingDates();
+  refreshWorkflow();
+  refreshRecDatesSummary();
+}
 function renderRecordingDates(){
   const el = document.getElementById('adminRecordingDates');
   if(!el) return;
   const packVal = document.getElementById('adminPack').value;
   const monthly = isMonthlyWorkflow({ pack: packVal });
-  const customPontual = isCustomPontualWorkflow({ pack: packVal });
   const slots = recordingSlots({ pack: packVal, recordingDates: currentRecordingDates }, currentRecOverride());
   const rowHtml = s => {
     const iso = currentRecordingDates[s.idx] || '';
@@ -712,33 +720,33 @@ function renderRecordingDates(){
         <select class="rec-time-box rec-time-end" data-idx="${s.idx}" aria-label="Hora de fim">${timeSelectOptions(endTime, 'fim')}</select>
       </span>
       <button type="button" class="cal-btn rec-cal-admin" data-idx="${s.idx}" data-label="${escapeAttr(s.label)}">${CAL_SVG}Adicionar ao meu calendário</button>
-      ${customPontual ? `<button type="button" class="pay-remove-btn rec-remove-btn" data-idx="${s.idx}" aria-label="Remover esta gravação" title="Remover">✕</button>` : ''}
+      <button type="button" class="pay-remove-btn rec-remove-btn" data-idx="${s.idx}"${s.month ? ` data-month="${s.month}"` : ''} aria-label="Remover esta gravação" title="Remover">✕</button>
     </div>`;
   };
   if(monthly){
-    // One collapsible box per month; open only the current month by default,
-    // keeping the admin's manual expand/collapse across re-renders.
+    // One collapsible box per month, each with its own "+ Adicionar gravação"
+    // button; open only the current month by default, keeping the admin's
+    // manual expand/collapse across re-renders.
     const hadRender = el.children.length > 0;
     const prevOpen = new Set([...el.querySelectorAll('.rec-month[open]')].map(d => d.dataset.month));
     const curMonth = currentMonthIndex();
     let html = '';
     for(let m = 1; m <= MONTHLY_BATCH_MONTHS; m++){
       const monthSlots = slots.filter(s => s.month === m);
-      if(!monthSlots.length) continue;
       const filled = monthSlots.filter(s => currentRecordingDates[s.idx]).length;
       const open = hadRender ? prevOpen.has(String(m)) : (m === curMonth);
       html += `<details class="rec-month" data-month="${m}"${open ? ' open' : ''}>`
         + `<summary class="box-sum"><span>Gravações — ${MONTHLY_MONTH_LABELS[m - 1]}</span><span class="box-count">${filled}/${monthSlots.length}</span></summary>`
-        + `<div class="box-body">${monthSlots.map(rowHtml).join('')}</div>`
-        + `</details>`;
+        + `<div class="box-body">`
+        + (monthSlots.length ? monthSlots.map(rowHtml).join('') : '<p class="panel-empty">Nenhuma gravação neste mês ainda.</p>')
+        + `<button type="button" class="btn btn-ghost rec-add-btn" data-month="${m}" style="margin-top:10px;">+ Adicionar gravação</button>`
+        + `</div></details>`;
     }
     el.innerHTML = html;
-  } else if(customPontual){
-    // Open-ended, like the pontual payment list: admin adds/removes rows freely.
-    el.innerHTML = (slots.length ? slots.map(rowHtml).join('') : '<p class="panel-empty">Nenhuma gravação ainda — adicione a primeira abaixo.</p>')
-      + `<button type="button" class="btn btn-ghost" id="adminAddRecordingBtn" style="margin-top:10px;">+ Adicionar gravação</button>`;
   } else {
-    el.innerHTML = slots.map(rowHtml).join('');
+    // Open-ended, like the payment list: admin adds/removes rows freely.
+    el.innerHTML = (slots.length ? slots.map(rowHtml).join('') : '<p class="panel-empty">Nenhuma gravação ainda — adicione a primeira abaixo.</p>')
+      + `<button type="button" class="btn btn-ghost rec-add-btn" style="margin-top:10px;">+ Adicionar gravação</button>`;
   }
   el.querySelectorAll('.rec-date-box').forEach(inp => {
     setISO(inp, inp.dataset.iso);
@@ -751,28 +759,14 @@ function renderRecordingDates(){
   el.querySelectorAll('.rec-time-end').forEach(sel => {
     sel.addEventListener('change', () => { currentRecordingEndTimes[Number(sel.dataset.idx)] = sel.value || ''; });
   });
-  if(customPontual){
-    el.querySelectorAll('.rec-remove-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        captureRecordingDates();
-        const i = Number(btn.dataset.idx);
-        currentRecordingDates.splice(i, 1);
-        currentRecordingTimes.splice(i, 1);
-        currentRecordingEndTimes.splice(i, 1);
-        renderRecordingDates();
-      });
+  el.querySelectorAll('.rec-remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      removeRecordingSlot(Number(btn.dataset.idx), btn.dataset.month ? Number(btn.dataset.month) : null);
     });
-    const addBtn = document.getElementById('adminAddRecordingBtn');
-    if(addBtn){
-      addBtn.addEventListener('click', () => {
-        captureRecordingDates();
-        currentRecordingDates.push('');
-        currentRecordingTimes.push('');
-        currentRecordingEndTimes.push('');
-        renderRecordingDates();
-      });
-    }
-  }
+  });
+  el.querySelectorAll('.rec-add-btn').forEach(btn => {
+    btn.addEventListener('click', () => addRecordingSlot(btn.dataset.month ? Number(btn.dataset.month) : null));
+  });
   // Admin: add this recording to the admin's own Google Calendar (reads the row live).
   el.querySelectorAll('.rec-cal-admin').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -957,13 +951,16 @@ document.getElementById('adminTestimonialClear').addEventListener('click', async
 //  ADMIN: PROJECT EDITOR (a project inside a client)
 // ============================================================
 export function openProject(projectId){
-  const p = (currentClientData.projects || []).find(x => x.id === projectId)
-    || { id: projectId, name: '', pack: '', contractStart: '', splitPayments: true, paymentDates: [], paymentsPaid: [], driveLink: '', deliveryDate: '', workflow: {} };
+  const existing = (currentClientData.projects || []).find(x => x.id === projectId);
+  currentProjectIsNew = !existing;
+  const p = existing
+    || { id: projectId, name: '', pack: '', contractStart: '', splitPayments: true, paymentDates: [], paymentsPaid: [], driveLink: '', deliveryDates: [], workflow: {} };
   currentProjectId = projectId;
   currentPaymentDates = projectPaymentDates(p).slice();
   currentPaymentsPaid = Array.isArray(p.paymentsPaid) ? p.paymentsPaid.slice() : [];
   currentPaymentAmounts = Array.isArray(p.paymentAmounts) ? p.paymentAmounts.slice() : [];
   currentPaymentNotes = Array.isArray(p.paymentNotes) ? p.paymentNotes.slice() : [];
+  currentDeliveryDates = projectDeliveryDates(p).slice();
 
   document.getElementById('projectTitle').textContent = p.name || 'Projeto';
   document.getElementById('adminProjectName').value = p.name || '';
@@ -971,22 +968,21 @@ export function openProject(projectId){
   setISO(document.getElementById('adminContractStart'), p.contractStart || '');
   document.getElementById('adminSplitPayments').checked = p.splitPayments !== false;
   document.getElementById('adminDriveLink').value = p.driveLink || '';
-  setISO(document.getElementById('adminDeliveryDate'), p.deliveryDate || '');
-  currentRecordingCount = clampRec(p.recordingCount || 2);
-  currentRecordingCounts = Array.isArray(p.recordingCounts)
-    ? monthlyRecCounts(p)
-    : [currentRecordingCount, currentRecordingCount, currentRecordingCount];
+  currentRecordingCounts = Array.isArray(p.recordingCounts) ? monthlyRecCounts(p) : [1, 1, 1];
   currentWorkflowDone = workflowDoneSet(p);
   openWfGroup = null; openWfGroupSet = false; // re-derive the default open box for this project's own progress
   currentRecordingDates = Array.isArray(p.recordingDates) ? p.recordingDates.slice() : [];
   currentRecordingTimes = Array.isArray(p.recordingTimes) ? p.recordingTimes.slice() : [];
   currentRecordingEndTimes = Array.isArray(p.recordingEndTimes) ? p.recordingEndTimes.slice() : [];
+  // A brand-new project (no pack chosen yet, so no recording data at all) defaults
+  // to 1 recording session once a non-monthly pack is picked — see the pack
+  // 'change' handler. Nothing to seed here yet when the pack is still empty.
   updateContractHint();
   updateProjectFormVisibility();
   renderPaymentList();
-  renderRecordingCountControls();
   refreshWorkflow();
   renderRecordingDates();
+  renderDeliveryDates();
   refreshRecDatesSummary();
   refreshPaymentsSummary();
   refreshDetailsSummary();
@@ -1032,12 +1028,51 @@ function refreshPaymentsSummary(){
 }
 function refreshDetailsSummary(){
   const el = document.getElementById('detailsSummary');
-  const delivery = getISO(document.getElementById('adminDeliveryDate'));
+  const dates = currentDeliveryDates.filter(Boolean).slice().sort();
   const drive = document.getElementById('adminDriveLink').value.trim();
   const linksHidden = document.getElementById('linksSection').classList.contains('hidden');
-  const parts = [delivery ? `Entrega: ${formatDatePt(delivery)}` : 'Entrega não definida'];
+  let deliveryText;
+  if(!dates.length) deliveryText = 'Entrega não definida';
+  else if(dates.length === 1) deliveryText = `Entrega: ${formatDatePt(dates[0])}`;
+  else deliveryText = `${dates.length} entregas · Próxima: ${formatDatePt(dates[0])}`;
+  const parts = [deliveryText];
   if(!linksHidden) parts.push(drive ? 'Link configurado' : 'Sem link');
   el.textContent = parts.join(' · ');
+}
+// ---------- delivery dates (open-ended, like payments/recordings) ----------
+function captureDeliveryDates(){
+  document.querySelectorAll('#adminDeliveryDates .delivery-date-box').forEach(inp => {
+    currentDeliveryDates[Number(inp.dataset.idx)] = getISO(inp);
+  });
+}
+function renderDeliveryDates(){
+  const el = document.getElementById('adminDeliveryDates');
+  if(!el) return;
+  const multi = currentDeliveryDates.length > 1;
+  const rowHtml = (iso, i) => `<div class="rec-date-row">
+    <span class="rec-date-num">${multi ? `Entrega ${i + 1}` : 'Entrega'}</span>
+    <span class="date-field"><input type="text" class="delivery-date-box date-inp" data-idx="${i}" data-iso="${iso}" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">📅</button></span>
+    <button type="button" class="pay-remove-btn delivery-remove-btn" data-idx="${i}" aria-label="Remover esta data de entrega" title="Remover">✕</button>
+  </div>`;
+  el.innerHTML = (currentDeliveryDates.length ? currentDeliveryDates.map(rowHtml).join('') : '<p class="panel-empty">Nenhuma data de entrega definida ainda.</p>')
+    + `<button type="button" class="btn btn-ghost" id="adminAddDeliveryBtn" style="margin-top:10px;">+ Adicionar data de entrega</button>`;
+  el.querySelectorAll('.delivery-date-box').forEach(inp => {
+    setISO(inp, inp.dataset.iso);
+    enhanceDateField(inp);
+    inp.addEventListener('change', () => { currentDeliveryDates[Number(inp.dataset.idx)] = getISO(inp); });
+  });
+  el.querySelectorAll('.delivery-remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      captureDeliveryDates();
+      currentDeliveryDates.splice(Number(btn.dataset.idx), 1);
+      renderDeliveryDates();
+    });
+  });
+  document.getElementById('adminAddDeliveryBtn').addEventListener('click', () => {
+    captureDeliveryDates();
+    currentDeliveryDates.push('');
+    renderDeliveryDates();
+  });
 }
 // The popups' own internal edits (add/remove a payment row, type a date...)
 // only need to reach the main-page summary once the admin is done — refresh
@@ -1049,9 +1084,8 @@ document.getElementById('paymentsModal').addEventListener('click', (e) => {
   if(e.target.closest('[data-modal-close]') || e.target === e.currentTarget) refreshPaymentsSummary();
 });
 document.getElementById('detailsModal').addEventListener('click', (e) => {
-  if(e.target.closest('[data-modal-close]') || e.target === e.currentTarget) refreshDetailsSummary();
+  if(e.target.closest('[data-modal-close]') || e.target === e.currentTarget){ captureDeliveryDates(); refreshDetailsSummary(); }
 });
-document.getElementById('adminDeliveryDate').addEventListener('change', refreshDetailsSummary);
 document.getElementById('adminDriveLink').addEventListener('change', refreshDetailsSummary);
 
 document.getElementById('adminAddProjectBtn').addEventListener('click', () => {
@@ -1068,6 +1102,7 @@ document.getElementById('projectBackLink').addEventListener('click', (e) => {
 document.getElementById('adminSaveProjectBtn').addEventListener('click', async () => {
   const msgEl = document.getElementById('adminProjectMsg');
   captureRecordingDates();
+  captureDeliveryDates();
   const project = {
     id: currentProjectId,
     name: document.getElementById('adminProjectName').value.trim() || 'Projeto sem nome',
@@ -1079,21 +1114,21 @@ document.getElementById('adminSaveProjectBtn').addEventListener('click', async (
     paymentAmounts: Array.from(document.querySelectorAll('#adminPaymentList .pay-amt-box')).map(b => Number(b.value) || 0),
     paymentNotes: Array.from(document.querySelectorAll('#adminPaymentList .pay-note-box')).map(b => b.value.trim()),
     driveLink: document.getElementById('adminDriveLink').value.trim(),
-    deliveryDate: getISO(document.getElementById('adminDeliveryDate')),
-    recordingCount: currentRecordingCount
+    deliveryDates: currentDeliveryDates.slice()
   };
   const packVal = project.pack;
   const monthly = isMonthlyWorkflow({ pack: packVal });
-  const recOverride = monthly ? currentRecordingCounts : currentRecordingCount;
+  const recOverride = monthly ? currentRecordingCounts : currentRecordingDates.length;
   const slotLen = recordingSlots({ pack: packVal, recordingDates: currentRecordingDates }, recOverride).length;
   project.recordingDates    = currentRecordingDates.slice(0, slotLen).map(d => d || '');
   project.recordingTimes    = currentRecordingTimes.slice(0, slotLen).map(t => t || '');
   project.recordingEndTimes = currentRecordingEndTimes.slice(0, slotLen).map(t => t || '');
+  project.recordingCount = project.recordingDates.length; // legacy/fallback field — kept in sync for code paths that read it without an override
   // Every pack type now persists a set of completed step keys (workflowDone) —
   // monthly packs additionally persist their per-month recording counts. Stale
   // keys (e.g. a recording count that shrank) are dropped against a freshly
   // computed valid-key set.
-  if(monthly) project.recordingCounts = currentRecordingCounts.map(clampRec);
+  if(monthly) project.recordingCounts = currentRecordingCounts.slice();
   const validKeys = new Set(workflowModel({ pack: packVal }, monthly ? project.recordingCounts : project.recordingCount).map(s => s.key));
   project.workflowDone = Array.from(currentWorkflowDone).filter(k => validKeys.has(k));
   const list = currentClientData.projects || (currentClientData.projects = []);
