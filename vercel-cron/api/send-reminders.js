@@ -119,50 +119,148 @@ function dueText(due) {
   if (due === 1) return "vence amanhã";
   return `vence em ${due} dias`;
 }
-// Same palette/typography as the portal (css/portal.css): --black #0a0a0a,
-// --off-white #f3f2ee, --gray #8c8c86, amber accent #f0a24b used elsewhere
-// for payments/SS, italic serif wordmark standing in for the site's
-// 'League Spartan italic' nav logo (email clients don't load Google Fonts,
-// so a web-safe italic serif is the closest reliable equivalent). Table-based
-// layout + inline styles throughout: the only structure that survives Gmail
-// and Outlook both stripping <style> blocks / class-based CSS.
-function reminderEmailHtml({ clientFirstName, projectName, parcelaNote, amount, iso, due }) {
-  const greetingName = clientFirstName ? ` ${clientFirstName}` : "";
-  return `
-<!DOCTYPE html>
+// ---- shared email shell (docs/email-ester.html) ----------------------------
+// This is the same visual system as docs/email-ester.html, the template Ester
+// pastes into Gmail by hand for prospecting/proposals. Keep the two in sync:
+// black hero band with the italic-serif ESTER wordmark, white body, black
+// signature + footer. Palette from css/index.css: --black #0a0a0a,
+// --off-white #f3f2ee, --gray #8c8c86, hairline #2b2b29, plus the portal's
+// amber #f0a24b (css/portal.css) kept ONLY on the dark bands as the "this is
+// about money" cue. Amber is never used on the white body: #f0a24b on #ffffff
+// is ~2:1 contrast and fails WCAG AA, so the amount is bolded near-black there.
+//
+// Deliberately NOT carried over from the prospecting template: the services
+// strip and the WhatsApp CTA button. Both are sales devices and read wrong on
+// a payment reminder.
+//
+// Constraints that shaped this markup (same as the pasted template):
+//  - <table> layout + inline styles only. Gmail and Outlook both strip <style>
+//    blocks and class-based CSS.
+//  - No web fonts. The site's DM Serif Display / League Spartan / Inter don't
+//    load in mail clients, so Georgia italic + Arial/Helvetica stand in.
+//  - width:100% everywhere, never a fixed px width. A fixed 600px block renders
+//    as a narrow mobile-looking column in desktop Gmail.
+//  - No media queries (stripped), so one set of values has to work from ~320px
+//    to ~1200px. Anything added here must be re-checked at 320px.
+//  - No images, so nothing depends on the recipient clicking "show images".
+//
+// The hidden preheader is what Gmail shows next to the subject in the inbox
+// list. Without it the inbox preview reads "Videographer · PortoESTER..." —
+// i.e. the hero text — which is useless. The trailing spacer characters push
+// the hero text out of the snippet window.
+function preheaderBlock(text) {
+  const pad = "&#847;&zwnj;&nbsp;".repeat(40);
+  return `<div style="display:none !important;font-size:1px;line-height:1px;color:#ffffff;opacity:0;max-height:0;max-width:0;overflow:hidden;mso-hide:all;">${text}${pad}</div>`;
+}
+
+function esterEmailShell({ preheader, bodyHtml }) {
+  return `<!DOCTYPE html>
 <html lang="pt">
-<body style="margin:0;padding:0;background-color:#0a0a0a;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0a;padding:32px 16px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#141414;border-radius:8px;overflow:hidden;border:1px solid #262626;">
-        <tr>
-          <td style="background-color:#0a0a0a;padding:28px 32px;text-align:center;border-bottom:2px solid #f0a24b;">
-            <div style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:28px;color:#f3f2ee;letter-spacing:0.02em;">Ester</div>
-            <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#8c8c86;margin-top:6px;">Produção Audiovisual</div>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px;font-family:Arial,Helvetica,sans-serif;color:#f3f2ee;font-size:15px;line-height:1.6;">
-            <p style="margin:0 0 16px;">Oi${greetingName}! Tudo bem? ✨</p>
-            <p style="margin:0 0 16px;">Esta é uma mensagem automática de lembrete: o pagamento referente a
-              <strong style="color:#f3f2ee;">${projectName}</strong>${parcelaNote}
-              ${amount > 0 ? `no valor de <strong style="color:#f0a24b;">${money(amount)}</strong> ` : ""}${dueText(due)}
-              (<strong style="color:#f3f2ee;">${formatDatePt(iso)}</strong>).</p>
-            <p style="margin:0 0 16px;color:#8c8c86;">Caso o pagamento já tenha sido efetuado, por favor desconsidere esta mensagem.</p>
-            <p style="margin:0;color:#8c8c86;">Qualquer dúvida ou necessidade de esclarecimento, estou à disposição.</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background-color:#0a0a0a;padding:24px 32px;border-top:1px solid #262626;">
-            <div style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:17px;color:#f3f2ee;">Estephanie Cerqueira</div>
-            <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#8c8c86;margin-top:3px;">Fotografia &amp; Vídeo · Porto</div>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
+<body style="margin:0;padding:0;background-color:#e8e7e3;">
+${preheaderBlock(preheader)}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;background-color:#e8e7e3;">
+<tr>
+<td align="center" style="padding:0;">
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;max-width:100%;min-width:100%;border-collapse:collapse;">
+
+    <!-- HERO -->
+    <tr>
+      <td bgcolor="#0a0a0a" align="center" style="background-color:#0a0a0a;padding:44px 32px 38px;">
+        <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;line-height:1.4;letter-spacing:0.32em;text-transform:uppercase;color:#8c8c86;padding-bottom:20px;">Produção Audiovisual&nbsp;&middot;&nbsp;Porto</div>
+        <div style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-weight:400;font-size:60px;line-height:1.05;letter-spacing:0.02em;color:#f3f2ee;">ESTER</div>
+      </td>
+    </tr>
+
+    <!-- filete âmbar: sinaliza "assunto: pagamento" -->
+    <tr>
+      <td height="2" bgcolor="#f0a24b" style="background-color:#f0a24b;font-size:0;line-height:0;">&nbsp;</td>
+    </tr>
+
+    <!-- CORPO -->
+    <tr>
+      <td bgcolor="#ffffff" style="background-color:#ffffff;padding:42px 36px 38px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.75;color:#1f1f1e;">
+${bodyHtml}
+      </td>
+    </tr>
+
+    <!-- ASSINATURA -->
+    <tr>
+      <td bgcolor="#0a0a0a" style="background-color:#0a0a0a;padding:32px 36px 28px;">
+
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:24px;line-height:1.2;color:#f3f2ee;padding-bottom:5px;">Ester</td>
+          </tr>
+          <tr>
+            <td style="font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#8c8c86;padding-bottom:20px;">Estephanie Cerqueira&nbsp;&middot;&nbsp;Videomaker &amp; Storymaker</td>
+          </tr>
+          <tr><td height="1" bgcolor="#2b2b29" style="background-color:#2b2b29;font-size:0;line-height:0;">&nbsp;</td></tr>
+          <tr><td style="height:20px;font-size:0;line-height:0;">&nbsp;</td></tr>
+        </table>
+
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.75;color:#f3f2ee;padding-bottom:8px;word-break:break-word;"><span style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#6f6f6a;">WhatsApp</span>&nbsp;&nbsp;&nbsp;<a href="https://wa.me/351913198057" target="_blank" style="color:#f3f2ee;text-decoration:none;">+351 913 198 057</a></td>
+          </tr>
+          <tr>
+            <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.75;color:#f3f2ee;padding-bottom:8px;word-break:break-word;"><span style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#6f6f6a;">Email</span>&nbsp;&nbsp;&nbsp;<a href="mailto:${ADMIN_EMAIL}" style="color:#f3f2ee;text-decoration:none;">${ADMIN_EMAIL}</a></td>
+          </tr>
+          <tr>
+            <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.75;color:#f3f2ee;word-break:break-word;"><span style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#6f6f6a;">Portfólio</span>&nbsp;&nbsp;&nbsp;<a href="https://ester-website-ee664.web.app" target="_blank" style="color:#f3f2ee;text-decoration:none;">ester-website-ee664.web.app</a></td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+
+    <!-- RODAPÉ -->
+    <tr>
+      <td bgcolor="#0a0a0a" align="center" style="background-color:#0a0a0a;padding:0 36px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+          <tr><td height="1" bgcolor="#2b2b29" style="background-color:#2b2b29;font-size:0;line-height:0;">&nbsp;</td></tr>
+        </table>
+        <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;line-height:1.8;letter-spacing:0.16em;text-transform:uppercase;color:#6f6f6a;padding-top:16px;">Mensagem automática&nbsp;&middot;&nbsp;Porto, Portugal</div>
+      </td>
+    </tr>
+
   </table>
+
+</td>
+</tr>
+</table>
 </body>
 </html>`;
+}
+
+function reminderEmailHtml({ clientFirstName, projectName, parcelaNote, amount, iso, due }) {
+  const greetingName = clientFirstName ? ` ${clientFirstName}` : "";
+  const amountText = amount > 0 ? `no valor de <strong>${money(amount)}</strong> ` : "";
+
+  // Inbox preview: the concrete facts, so the client can triage without opening.
+  const preheader = amount > 0
+    ? `${money(amount)} · ${dueText(due)} (${formatDatePt(iso)}).`
+    : `Pagamento ${dueText(due)} (${formatDatePt(iso)}).`;
+
+  const bodyHtml = `
+        <p style="margin:0 0 18px;">Oi${greetingName}! Tudo bem? ✨</p>
+
+        <p style="margin:0 0 22px;">Esta é uma mensagem automática de lembrete: o pagamento referente a <strong>${projectName}</strong>${parcelaNote} ${amountText}${dueText(due)}.</p>
+
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin:0 0 24px;">
+          <tr>
+            <td style="background-color:#f6f5f2;border-left:2px solid #0a0a0a;padding:16px 18px;font-family:Helvetica,Arial,sans-serif;word-break:break-word;">
+              <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#8c8c86;padding-bottom:6px;">Vencimento</div>
+              <div style="font-size:17px;line-height:1.4;color:#1f1f1e;"><strong>${formatDatePt(iso)}</strong>${amount > 0 ? `&nbsp;&nbsp;&middot;&nbsp;&nbsp;${money(amount)}` : ""}</div>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin:0 0 14px;color:#5a5a57;">Caso o pagamento já tenha sido efetuado, por favor desconsidere esta mensagem.</p>
+
+        <p style="margin:0;color:#5a5a57;">Qualquer dúvida ou necessidade de esclarecimento, estou à disposição.</p>`;
+
+  return esterEmailShell({ preheader, bodyHtml });
 }
 
 module.exports = async (req, res) => {
