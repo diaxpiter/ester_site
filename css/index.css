@@ -935,7 +935,7 @@
     border-radius:50%;
     background:var(--off-white);
     pointer-events:none;
-    z-index:500;
+    z-index:1000;
     mix-blend-mode:difference;
     opacity:0;
     transition:width 0.25s ease, height 0.25s ease, opacity 0.2s ease;
