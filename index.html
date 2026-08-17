@@ -1,14 +1,26 @@
 <!DOCTYPE html>
 <html lang="pt-PT">
 <head>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-TN4BGVBYDR"></script>
+<!-- Google tag (gtag.js) — gated behind cookie consent (see #cookieBanner script below).
+     Only queues into dataLayer/defines gtag(); the actual GA script tag + config call
+     are deferred to esterLoadGA(), called either here (consent already granted) or from
+     the banner's Accept button. -->
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-TN4BGVBYDR');
+  window.esterLoadGA = function(){
+    if(window.esterGALoaded) return;
+    window.esterGALoaded = true;
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-TN4BGVBYDR';
+    document.head.appendChild(s);
+    gtag('js', new Date());
+    gtag('config', 'G-TN4BGVBYDR');
+  };
+  try{
+    if(localStorage.getItem('esterCookieConsent') === 'granted') window.esterLoadGA();
+  }catch(e){}
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,6 +38,7 @@
 </script>
 <title>Ester — Produção Audiovisual</title>
 <meta name="description" content="Ester — produção audiovisual no Porto. Captação de conteúdo, direção de gravação e cobertura de eventos para negócios de beleza, estética e mais.">
+<link rel="canonical" href="https://esterprod.com/">
 <link rel="icon" href="images/icons/fav.ico" sizes="any">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#0a0a0a">
@@ -36,8 +49,8 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Ester — Produção Audiovisual">
 <meta property="og:description" content="Criando, comunicando e conectando sonhos. Captação de conteúdo e direção de gravação no Porto.">
-<meta property="og:image" content="https://ester-website-ee664.web.app/images/about.jpeg">
-<meta property="og:url" content="https://ester-website-ee664.web.app/">
+<meta property="og:image" content="https://esterprod.com/images/about.jpeg">
+<meta property="og:url" content="https://esterprod.com/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,8 +61,8 @@
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
   "name": "Ester — Estephanie Cerqueira",
-  "image": "https://ester-website-ee664.web.app/images/about.jpeg",
-  "url": "https://ester-website-ee664.web.app/",
+  "image": "https://esterprod.com/images/about.jpeg",
+  "url": "https://esterprod.com/",
   "telephone": "+351913198057",
   "email": "contatoestephanie@gmail.com",
   "priceRange": "€€",
@@ -107,6 +120,22 @@
   </div>
 </div>
 
+<!-- Cookie consent banner — gates GA4 (see head script). Shown until the visitor
+     accepts/rejects; reopenable anytime via the footer's "manage cookies" link. -->
+<div class="cookie-banner" id="cookieBanner" role="dialog" aria-live="polite" aria-label="Cookies" aria-hidden="true">
+  <p data-i18n-html="cookie.text">Usamos cookies de análise (Google Analytics) apenas com o teu consentimento. <a href="privacy.html#cookies">Saiba mais</a>.</p>
+  <div class="cookie-actions">
+    <button class="cta-btn cta-btn-ghost" id="cookieReject" data-i18n="cookie.reject">Recusar</button>
+    <button class="cta-btn cta-btn-primary" id="cookieAccept" data-i18n="cookie.accept">Aceitar</button>
+  </div>
+</div>
+
+<!-- Floating WhatsApp CTA — persistent inquiry channel, fades in once the hero
+     (with its own WhatsApp CTA) scrolls out of view. -->
+<a class="wa-fab" id="waFab" data-wa-msg="hero.waText" href="https://wa.me/351913198057" target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.9-9.92 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.22 8.22 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24a8.2 8.2 0 0 1 5.83 2.42 8.19 8.19 0 0 1 2.41 5.83c0 4.55-3.7 8.24-8.24 8.24zm4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.13-.17.24-.64.8-.78.97-.14.17-.29.19-.53.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.24-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.15.16-.25.25-.42.08-.16.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.42-.14-.01-.31-.01-.48-.01a.92.92 0 0 0-.67.31c-.23.25-.87.85-.87 2.08 0 1.23.89 2.41 1.02 2.58.12.16 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.16-.48-.28z"/></svg>
+</a>
+
 <section class="hero" id="top">
   <div class="hero-eyebrow" data-i18n="hero.eyebrow">Videographer</div>
   <h1>ESTER</h1>
@@ -159,7 +188,7 @@
       <h2 data-i18n="about.title">A closer look at the details.</h2>
     </div>
     <div class="about" data-reveal>
-    <div class="about-portrait"><img src="images/about.jpeg" alt="Ester"></div>
+    <div class="about-portrait"><img src="images/about.jpeg" alt="Ester, videógrafa"></div>
     <div class="about-text">
       <p data-i18n="about.p1">A Bahia native and lover of my city, Salvador. I'm 24 and currently living in Porto, where I've been discovering a new way of life — both personal and professional.</p>
       <p data-i18n="about.p2">I've worked in the digital world for over 5 years. Content creation, shoot direction and event coverage are some of the services I offer.</p>
@@ -250,6 +279,7 @@
     <div class="foot-links">
       <a href="https://instagram.com/estephanie.e" target="_blank" rel="noopener">Instagram</a>
       <a href="privacy.html" data-i18n="footer.privacy">Privacy</a>
+      <button type="button" id="manageCookiesBtn" data-i18n="footer.manageCookies">Cookie settings</button>
     </div>
   </div>
 </footer>
@@ -447,6 +477,10 @@
       "how.s3title": "Delivery",
       "how.s3sub": "All the material, edited and ready to publish.",
       "footer.privacy": "Privacy",
+      "footer.manageCookies": "Cookie settings",
+      "cookie.text": "We use analytics cookies (Google Analytics) only with your consent. <a href=\"privacy.html#cookies\">Learn more</a>.",
+      "cookie.accept": "Accept",
+      "cookie.reject": "Reject",
       "tick.video": "Videomaker",
       "tick.story": "Storymaker",
       "tick.courses": "Beauty course production",
@@ -494,6 +528,10 @@
       "how.s3title": "Entrega",
       "how.s3sub": "Todo o material editado<br>e pronto para publicar.",
       "footer.privacy": "Privacidade",
+      "footer.manageCookies": "Gerir cookies",
+      "cookie.text": "Usamos cookies de análise (Google Analytics) apenas com o teu consentimento. <a href=\"privacy.html#cookies\">Saiba mais</a>.",
+      "cookie.accept": "Aceitar",
+      "cookie.reject": "Recusar",
       "tick.video": "Videomaker",
       "tick.story": "Storymaker",
       "tick.courses": "Produção de cursos de beleza",
@@ -594,6 +632,38 @@
     }
     lastScrollY = y;
   }, { passive: true });
+
+  // ===== Cookie consent (gates GA4 — see esterLoadGA in <head> — until the visitor opts in) =====
+  (function cookieConsent(){
+    const banner = document.getElementById('cookieBanner');
+    const acceptBtn = document.getElementById('cookieAccept');
+    const rejectBtn = document.getElementById('cookieReject');
+    const manageBtn = document.getElementById('manageCookiesBtn');
+    if(!banner) return;
+
+    function show(){ banner.classList.add('open'); banner.setAttribute('aria-hidden', 'false'); document.body.classList.add('cookie-banner-open'); }
+    function hide(){ banner.classList.remove('open'); banner.setAttribute('aria-hidden', 'true'); document.body.classList.remove('cookie-banner-open'); }
+
+    let consent = '';
+    try{ consent = localStorage.getItem('esterCookieConsent') || ''; }catch(e){}
+    if(!consent) show();
+
+    acceptBtn.addEventListener('click', () => {
+      try{ localStorage.setItem('esterCookieConsent', 'granted'); }catch(e){}
+      if(window.esterLoadGA) window.esterLoadGA();
+      hide();
+    });
+    rejectBtn.addEventListener('click', () => {
+      try{ localStorage.setItem('esterCookieConsent', 'denied'); }catch(e){}
+      hide();
+    });
+    if(manageBtn){
+      manageBtn.addEventListener('click', () => {
+        try{ localStorage.removeItem('esterCookieConsent'); }catch(e){}
+        show();
+      });
+    }
+  })();
 
   // ===== Portfolio reel slider (Vimeo-ready) =====
   // Fill in `vimeo` with the id from a vimeo.com/<id> link to serve that reel
@@ -717,6 +787,23 @@
     if(prev) prev.addEventListener('click', () => reelSlider.scrollBy({ left: -step(), behavior:'smooth' }));
     if(next) next.addEventListener('click', () => reelSlider.scrollBy({ left:  step(), behavior:'smooth' }));
   }
+
+  // ===== Floating WhatsApp CTA — fades in once the hero (with its own WhatsApp
+  // CTA) scrolls out of view. Hidden while the lightbox is open via the
+  // `body.lightbox-open` class it already sets (css/index.css). =====
+  (function waFab(){
+    const fab = document.getElementById('waFab');
+    const hero = document.getElementById('top');
+    if(!fab || !hero) return;
+    if('IntersectionObserver' in window){
+      const io = new IntersectionObserver((entries) => {
+        fab.classList.toggle('visible', !entries[0].isIntersecting);
+      }, { rootMargin: '-10% 0px 0px 0px' });
+      io.observe(hero);
+    } else {
+      fab.classList.add('visible');
+    }
+  })();
 
   // Photo marquee — build in a random order each load so same-model shots
   // (e.g. photos 2–5) don't appear clustered/repetitive.

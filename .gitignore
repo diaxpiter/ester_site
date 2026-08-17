@@ -1,5 +1,6 @@
 # Firebase local cache
 .firebase/
+firebase-debug.log
 
 # Local scratch dirs
 tmp/
