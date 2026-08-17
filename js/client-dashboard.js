@@ -78,7 +78,7 @@ function renderClientDashboard(data){
     reviewBtn.classList.toggle('hidden', !GOOGLE_REVIEW_LINK);
     if(GOOGLE_REVIEW_LINK) reviewBtn.href = GOOGLE_REVIEW_LINK;
     document.getElementById('referralBtn').href = 'https://wa.me/?text=' + encodeURIComponent(
-      'Conheces uma marca de beleza que precise de vídeo ou fotografia? Recomendo a Ester (Estephanie Cerqueira) — https://ester-website-ee664.web.app'
+      'Conheces uma marca de beleza que precise de vídeo ou fotografia? Recomendo a Ester (Estephanie Cerqueira) — https://esterprod.com'
     );
   }
 

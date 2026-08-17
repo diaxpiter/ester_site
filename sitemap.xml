@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://ester-website-ee664.web.app/</loc>
+    <loc>https://esterprod.com/</loc>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://ester-website-ee664.web.app/privacy.html</loc>
+    <loc>https://esterprod.com/privacy.html</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>

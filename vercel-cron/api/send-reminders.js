@@ -207,7 +207,7 @@ ${bodyHtml}
             <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.75;color:#f3f2ee;padding-bottom:8px;word-break:break-word;"><span style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#6f6f6a;">Email</span>&nbsp;&nbsp;&nbsp;<a href="mailto:${ADMIN_EMAIL}" style="color:#f3f2ee;text-decoration:none;">${ADMIN_EMAIL}</a></td>
           </tr>
           <tr>
-            <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.75;color:#f3f2ee;word-break:break-word;"><span style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#6f6f6a;">Portfólio</span>&nbsp;&nbsp;&nbsp;<a href="https://ester-website-ee664.web.app" target="_blank" style="color:#f3f2ee;text-decoration:none;">ester-website-ee664.web.app</a></td>
+            <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.75;color:#f3f2ee;word-break:break-word;"><span style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#6f6f6a;">Portfólio</span>&nbsp;&nbsp;&nbsp;<a href="https://esterprod.com" target="_blank" style="color:#f3f2ee;text-decoration:none;">esterprod.com</a></td>
           </tr>
         </table>
 
