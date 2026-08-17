@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Página não encontrada — Ester</title>
+<meta name="description" content="A página que procuras não existe ou foi movida.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="images/icons/fav.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&family=League+Spartan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/index.css">
+<style>
+  .notfound{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:140px 24px 80px;
+  }
+  .notfound .code{
+    font-family:'DM Serif Display', serif;
+    font-style:italic;
+    font-size:clamp(72px,16vw,160px);
+    line-height:1;
+    color:var(--off-white);
+  }
+  .notfound h1{
+    font-size:clamp(20px,3vw,26px);
+    font-weight:500;
+    margin:16px 0 8px;
+  }
+  .notfound p{
+    color:var(--gray);
+    font-size:15px;
+    max-width:420px;
+    margin-bottom:36px;
+  }
+  .notfound-actions{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-name"><a href="index.html" aria-label="Voltar ao início">Ester</a></div>
+</nav>
+
+<div class="notfound">
+  <div class="code">404</div>
+  <h1>Esta página não existe.</h1>
+  <p>O link pode estar errado ou a página foi movida. Volta ao início ou fala comigo diretamente.</p>
+  <div class="notfound-actions">
+    <a class="cta-btn cta-btn-primary" href="index.html">Voltar ao início</a>
+    <a class="cta-btn cta-btn-ghost" href="https://wa.me/351913198057" target="_blank" rel="noopener">Falar no WhatsApp</a>
+  </div>
+</div>
+
+</body>
+</html>
