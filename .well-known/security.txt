@@ -1,0 +1,4 @@
+Contact: mailto:contatoestephanie@gmail.com
+Expires: 2027-08-18T00:00:00.000Z
+Preferred-Languages: pt, en
+Canonical: https://esterprod.com/.well-known/security.txt

@@ -7,6 +7,7 @@
       "firestore.rules",
       "**/.*",
       "**/.*/**",
+      "!.well-known/security.txt",
       "**/*.md",
       "**/*.pdf",
       "**/node_modules/**",
