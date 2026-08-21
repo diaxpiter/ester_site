@@ -15,10 +15,10 @@
      (a "lighten toward off-white" tint on dark becomes "darken toward off-white"
      on light — the same "highlight" effect either way). */
   :root[data-theme="light"]{
-    --black:#f3f2ee;
-    --off-white:#0a0a0a;
-    --off-white-rgb:10,10,10;
-    --gray:#6b6b66;
+    --black:#eae7df;
+    --off-white:#1c1a17;
+    --off-white-rgb:28,26,23;
+    --gray:#6b6559;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html{scroll-behavior:smooth;}
