@@ -415,7 +415,7 @@ function renderPaymentList(){
     const note = currentPaymentNotes[i] || '';
     html += `<div class="pay-admin-row${paid ? ' paid' : ''}${pontual ? ' is-pontual' : ''}">
       ${n > 1 ? `<span class="pay-admin-num">${i + 1}.</span>` : ''}
-      <span class="date-field"><input type="text" class="pay-date-box date-inp" data-idx="${i}" data-iso="${date}" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">📅</button></span>
+      <span class="date-field"><input type="text" class="pay-date-box date-inp" data-idx="${i}" data-iso="${date}" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">▦</button></span>
       <input type="number" class="pay-amt-box" data-idx="${i}" value="${amt}" min="0" step="0.01" placeholder="€" aria-label="Valor (€)">
       ${pontual ? `<input type="text" class="pay-note-box" data-idx="${i}" value="${escapeAttr(note)}" placeholder="Descrição do serviço" aria-label="Descrição do serviço">` : ''}
       <label class="pay-admin-paid"><input type="checkbox" class="pay-paid-box" data-idx="${i}"${paid ? ' checked' : ''}> Pago</label>
@@ -496,14 +496,6 @@ function currentMonthIndex(){
   }
   return MONTHLY_BATCH_MONTHS;
 }
-// Small icon per workflow group, purely visual (quick scanning, not data).
-const WF_GROUP_ICONS = {
-  'Contrato & Pagamento': '📄', 'Preparação': '🗂️',
-  'Gravação': '🎬', 'Pós-produção': '🎞️'
-};
-function wfGroupIcon(name){
-  return WF_GROUP_ICONS[name] || (name.indexOf('Mês') === 0 ? '🗓️' : '📌');
-}
 // Which group should default-open: the first not-fully-done one (by order),
 // or the last one if everything is already done. Generalizes "current month"
 // (monthly packs) to "current phase" (every other pack) alike.
@@ -550,7 +542,7 @@ function renderFluxoWidget(){
   let html = `<div class="wf-progress"><div class="wf-progress-track"><div class="wf-progress-fill" style="width:${frac}%"></div></div><span class="wf-progress-label">${doneCount}/${model.length}</span></div>`;
   if(next){
     html += `<div class="wf-next">
-      <span class="wf-next-label">${wfGroupIcon(next.group)} Próxima etapa · ${escapeHtml(next.group)}</span>
+      <span class="wf-next-label">Próxima etapa · ${escapeHtml(next.group)}</span>
       <p class="wf-next-step">${escapeHtml(next.label)}</p>
       <button type="button" class="btn" id="wfQuickCompleteBtn">✓ Concluir</button>
     </div>`;
@@ -589,7 +581,7 @@ function renderWorkflowModal(){
     const allDone = gd === g.steps.length;
     const open = g.name === openWfGroup;
     return `<details class="wf-month" data-group="${escapeAttr(g.name)}"${open ? ' open' : ''}>`
-      + `<summary class="box-sum"><span>${wfGroupIcon(g.name)} ${escapeHtml(g.name)}</span><span class="box-count">${gd}/${g.steps.length}</span></summary>`
+      + `<summary class="box-sum"><span>${escapeHtml(g.name)}</span><span class="box-count">${gd}/${g.steps.length}</span></summary>`
       + `<div class="box-body">`
       + `<button type="button" class="wf-mark-all" data-group="${escapeAttr(g.name)}">${allDone ? 'Desmarcar tudo' : 'Marcar tudo'}</button>`
       + rows(g.steps)
@@ -712,7 +704,7 @@ function renderRecordingDates(){
     const st = iso ? paymentStatus(iso) : null;
     return `<div class="rec-date-row">
       <span class="rec-date-num">${escapeHtml(s.label)}</span>
-      <span class="date-field"><input type="text" class="rec-date-box date-inp" data-idx="${s.idx}" data-iso="${iso}" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">📅</button></span>
+      <span class="date-field"><input type="text" class="rec-date-box date-inp" data-idx="${s.idx}" data-iso="${iso}" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">▦</button></span>
       ${st ? `<span class="rec-status ${st.mod}">${escapeHtml(st.text)}</span>` : ''}
       <span class="rec-time-group">
         <select class="rec-time-box rec-time-start" data-idx="${s.idx}" aria-label="Hora de início">${timeSelectOptions(time, 'início')}</select>
@@ -1051,7 +1043,7 @@ function renderDeliveryDates(){
   const multi = currentDeliveryDates.length > 1;
   const rowHtml = (iso, i) => `<div class="rec-date-row">
     <span class="rec-date-num">${multi ? `Entrega ${i + 1}` : 'Entrega'}</span>
-    <span class="date-field"><input type="text" class="delivery-date-box date-inp" data-idx="${i}" data-iso="${iso}" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">📅</button></span>
+    <span class="date-field"><input type="text" class="delivery-date-box date-inp" data-idx="${i}" data-iso="${iso}" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">▦</button></span>
     <button type="button" class="pay-remove-btn delivery-remove-btn" data-idx="${i}" aria-label="Remover esta data de entrega" title="Remover">✕</button>
   </div>`;
   el.innerHTML = (currentDeliveryDates.length ? currentDeliveryDates.map(rowHtml).join('') : '<p class="panel-empty">Nenhuma data de entrega definida ainda.</p>')

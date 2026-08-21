@@ -180,7 +180,7 @@ export function isProjectComplete(p){
 // Simplified client-facing stage names — a lot coarser than the admin's own
 // step-by-step checklist (which mixes in admin-only bookkeeping), used for the
 // client dashboard's "Fluxo do projeto" timeline.
-export const FLOW_STAGES = ['Início', 'Pagamento', 'Roteirização', 'Gravação', 'Edição', 'Entrega'];
+export const FLOW_STAGES = ['Início', 'Pagamento', 'Roteirização', 'Gravação', 'Edição em Andamento', 'Entrega'];
 // Which of the 6 FLOW_STAGES a project is currently at, derived from the
 // admin's own workflow progress. -1 for avulso/pontual packs, which have no
 // production workflow at all (payment-only) — callers should hide the

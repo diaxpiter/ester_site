@@ -64,7 +64,7 @@ function waReminderHref(r){
       `${money.format(lateFine(r.amount))} de multa — valor atualizado: ${money.format(r.amount + lateFine(r.amount))}.`
     : '';
   const text = encodeURIComponent(
-    `Oieee! Tudo bem? ✨\n\n` +
+    `Oieee! Tudo bem?\n\n` +
     `Esta é uma mensagem automática de lembrete sobre o vencimento do pagamento referente ao serviço prestado, ` +
     `com data limite em ${formatDatePt(r.iso)}${valor}${parcela}.${fineNote}\n\n` +
     `Esse formato está vinculado ao nosso site! Caso o pagamento já tenha sido efetuado, por favor, desconsidere esta mensagem.\n\n` +
@@ -160,7 +160,7 @@ export async function loadDebts(){
 
   const total = rows.reduce((s, r) => s + r.amount, 0);
   totalEl.innerHTML = `${rows.length} pagamento(s) a vencer em 5 dias ou em atraso · total <strong>${money.format(total)}</strong>`;
-  if(rows.length === 0){ listEl.innerHTML = '<p class="panel-empty">Nada urgente — sem pagamentos a vencer nos próximos 5 dias. 🎉</p>'; return; }
+  if(rows.length === 0){ listEl.innerHTML = '<p class="panel-empty">Nada urgente — sem pagamentos a vencer nos próximos 5 dias.</p>'; return; }
 
   listEl.innerHTML = '';
   rows.forEach(r => {
@@ -208,7 +208,7 @@ export async function checkDueSoon(rows){
   }).join('');
   const more = soon.length > 6 ? `<li class="db-more">+ ${soon.length - 6} em "A receber"</li>` : '';
   banner.innerHTML = `
-    <h4>⚠️ ${soon.length} pagamento(s) a vencer em 3 dias ou em atraso</h4>
+    <h4>${soon.length} pagamento(s) a vencer em 3 dias ou em atraso</h4>
     <ul>${items}${more}</ul>
     <button class="db-dismiss" id="dueDismiss">Dispensar por agora</button>`;
   banner.classList.remove('hidden');

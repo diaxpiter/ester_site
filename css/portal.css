@@ -6,6 +6,7 @@
     --line:rgba(var(--off-white-rgb),0.16);
     --white:#ffffff;
     --red:#e5573f;
+    --green:#5fbf7a;
   }
   /* Light theme: the app defaults to dark (toggle in the nav, persisted in
      localStorage). Swapping --black/--off-white's VALUES — not renaming them —
@@ -15,10 +16,11 @@
      (a "lighten toward off-white" tint on dark becomes "darken toward off-white"
      on light — the same "highlight" effect either way). */
   :root[data-theme="light"]{
-    --black:#eae7df;
+    --black:#d9d5c8;
     --off-white:#1c1a17;
     --off-white-rgb:28,26,23;
     --gray:#6b6559;
+    --green:#1e7a45;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html{scroll-behavior:smooth;}
@@ -29,6 +31,16 @@
     min-height:100vh;
     color-scheme:dark;
     overflow-x:hidden;
+  }
+  /* film grain overlay, matching index.html */
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:999;
+    pointer-events:none;
+    opacity:0.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
   h1,h2,h3{font-family:'League Spartan', sans-serif;font-weight:500;letter-spacing:-0.01em;}
   a{color:inherit;}
@@ -152,11 +164,11 @@
   .pay-line:last-child{margin-bottom:0;}
   .pay-line .pay-idx{color:var(--gray);margin-right:4px;}
   .pay-line .days{font-weight:600;color:var(--gray);}
-  .pay-line.upcoming .days{color:#5fbf7a;} /* green  — Faltam X dias */
+  .pay-line.upcoming .days{color:var(--green);} /* green  — Faltam X dias */
   .pay-line.today .days{color:#f0a24b;}    /* orange — Vence hoje */
   .pay-line.overdue .days{color:#e5573f;}  /* red    — Em atraso */
   .pay-line.paid{color:var(--gray);}       /* muted  — já pago */
-  .pay-line.paid .days{color:#5fbf7a;}
+  .pay-line.paid .days{color:var(--green);}
   /* "Adicionar ao calendário" (.ics) — small button under an unpaid payment */
   .cal-btn{
     display:inline-flex;align-items:center;gap:5px;margin:6px 0 4px;
@@ -180,7 +192,7 @@
      recording's urgency reads at a glance without doing date math. */
   .rec-status{
     font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap;
-    background:rgba(95,191,122,0.12);color:#5fbf7a;flex:0 0 auto;
+    background:rgba(95,191,122,0.12);color:var(--green);flex:0 0 auto;
   }
   .rec-status.today{background:rgba(240,162,75,0.12);color:#f0a24b;}
   .rec-status.overdue{background:rgba(229,87,63,0.12);color:var(--red);}
@@ -189,7 +201,7 @@
      Gravação → Edição → Entrega, a coarser client-facing read of the admin's
      own step-by-step workflow (see core.js projectFlowStage). */
   .flow-timeline{
-    display:flex;align-items:flex-start;overflow-x:auto;padding-bottom:2px;
+    display:flex;align-items:flex-start;overflow-x:auto;padding:5px 0 2px;
     -webkit-overflow-scrolling:touch;scrollbar-width:none;
   }
   .flow-timeline::-webkit-scrollbar{display:none;}
@@ -239,7 +251,7 @@
   .project-card > h3{font-size:22px;font-style:italic;font-weight:400;margin-bottom:22px;}
   .proj-card-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
   /* Client dashboard: greeting row with the always-visible contact button */
-  .dash-head-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .dash-head-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:40px;}
   .dash-contact-btn{white-space:nowrap;}
   .dash-complete-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;}
   .proj-card-head h3{font-size:22px;font-style:italic;font-weight:400;}
@@ -304,11 +316,12 @@
   .cal-dow{background:var(--black);color:var(--gray);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;text-align:center;padding:6px 0;}
   .cal-cell{background:var(--black);min-height:50px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;}
   .cal-cell.empty{background:transparent;}
-  .cal-daynum{font-size:12px;color:var(--gray);}
-  .cal-cell.is-today .cal-daynum{color:var(--off-white);font-weight:600;}
+  .cal-daynum{font-size:12px;color:var(--gray);width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;}
+  .cal-cell.is-today .cal-daynum{background:var(--off-white);color:var(--black);font-weight:600;}
   .cal-cell.has-event .cal-daynum{color:var(--off-white);}
-  .cal-dots{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;}
-  .cal-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;}
+  .cal-cell.is-today.has-event .cal-daynum{color:var(--black);}
+  .cal-dots{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;}
+  .cal-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 1px rgba(var(--off-white-rgb),0.25);}
   .cal-dot-start{background:#5f9fd6;}
   .cal-dot-recording{background:#b18cf0;}
   .cal-dot-payment{background:#f0a24b;}
@@ -316,7 +329,7 @@
   .cal-dot-delivery{background:#e5573f;}
   .cal-legend{display:flex;flex-wrap:wrap;gap:14px 20px;margin-top:16px;font-size:12px;color:var(--gray);}
   .cal-legend span{display:flex;align-items:center;gap:6px;}
-  @media(max-width:480px){.cal-cell{min-height:38px;padding:4px 2px;}.cal-daynum{font-size:11px;}}
+  @media(max-width:480px){.cal-cell{min-height:38px;padding:4px 2px;}.cal-daynum{font-size:11px;width:17px;height:17px;}}
 
   /* admin: project list rows */
   .project-row{

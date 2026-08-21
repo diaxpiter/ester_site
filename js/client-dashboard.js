@@ -43,7 +43,7 @@ function renderClientDashboard(data){
     const appleIcon = document.getElementById('appleIcon');
     if(appleIcon) appleIcon.href = data.iconDataUrl;
   }
-  document.getElementById('dashName').textContent = data.firstName || "você";
+  document.getElementById('dashName').textContent = `${data.firstName || ''} ${data.lastName || ''}`.trim() || "você";
   const rows = [
     ['Nome', `${data.firstName || ''} ${data.lastName || ''}`.trim()],
     ['Nacionalidade', data.nationality || ''],
