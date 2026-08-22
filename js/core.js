@@ -87,6 +87,10 @@ export const WORKFLOW_PHASES = [
 export const MONTHLY_MONTH_LABELS = ['1º mês', '2º mês', '3º mês'];
 export const REC_MIN = 1;   // at least 1 recording; no upper cap — admin adds more freely
 export const clampRec = n => Math.max(REC_MIN, Number(n) || REC_MIN);
+// How many recording sessions can be shot in a single day — used by the
+// dashboard's capacity view to flag overbooked days. Bump this if a second
+// shooter/editor joins the business.
+export const DAILY_RECORDING_CAPACITY = 1;
 // True when a project uses the branched 3-month workflow (monthly packs).
 export function isMonthlyWorkflow(p){
   const pack = p && p.pack ? PACKS[p.pack] : null;
@@ -393,7 +397,7 @@ export function toggleTheme(){
   sel.innerHTML = html;
 })();
 
-export const views = ["view-admin-auth","view-client-error","view-dashboard","view-admin","view-admin-leads","view-admin-edit","view-admin-project","view-admin-debts","view-admin-finance"];
+export const views = ["view-admin-auth","view-client-error","view-dashboard","view-admin","view-admin-leads","view-admin-edit","view-admin-project","view-admin-debts","view-admin-finance","view-admin-dashboard"];
 // The "due soon / overdue" nudge only belongs on A receber — every other view
 // hides it here so callers don't each need to remember to. checkDueSoon()
 // (admin-debts-agenda.js) is what re-populates and un-hides it.

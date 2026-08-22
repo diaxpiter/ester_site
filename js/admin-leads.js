@@ -30,6 +30,7 @@ export async function loadLeads(){
     return;
   }
   currentLeads = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .filter(l => !l.converted) // converted leads are kept (not deleted) for reporting, but stay off this list
     .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
   renderLeadsList();
 }
@@ -165,13 +166,15 @@ document.getElementById('leadsList').addEventListener('click', async (e) => {
       confirmText: 'Converter'
     });
     if(!ok) return;
+    const newRef = doc(collection(db, "clients"));
     try{
-      await deleteDoc(doc(db, "leads", id));
+      // Kept (not deleted) so conversion can be reported on later — just marked
+      // converted and dropped from the "leads em aberto" list (see loadLeads above).
+      await updateDoc(doc(db, "leads", id), { converted: true, convertedClientId: newRef.id, convertedAt: serverTimestamp() });
     }catch(err){
-      toast('Não foi possível remover o lead', true);
+      toast('Não foi possível registar a conversão', true);
       return;
     }
-    const newRef = doc(collection(db, "clients"));
     loadAdminEdit(newRef.id, null);
     document.getElementById('adminFirstName').value = lead.firstName || '';
     document.getElementById('adminPhone').value = lead.phone || '';
