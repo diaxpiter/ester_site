@@ -80,9 +80,9 @@ export const WORKFLOW_PHASES = [
   ] },
   { name: 'Preparação', steps: [
     'Pasta do projeto no Drive', 'Organização do projeto',
-    'Reunião para brainstorm', 'PDF com referências'
+    'Reunião para brainstorm'
   ] },
-  { name: 'Pós-produção', steps: ['Edição do material', 'PDF de apresentação final'] }
+  { name: 'Pós-produção', steps: ['Edição do material'] }
 ];
 export const MONTHLY_MONTH_LABELS = ['1º mês', '2º mês', '3º mês'];
 export const REC_MIN = 1;   // at least 1 recording; no upper cap — admin adds more freely
@@ -149,12 +149,10 @@ export function workflowModel(p, override){
     const rec = counts[m - 1];
     steps.push({ key: `m${m}-pay`, label: `Pagamento ${m} recebido`, group: g });
     steps.push({ key: `m${m}-script`, label: `Roteirização (${mo})`, group: g });
-    steps.push({ key: `m${m}-ref`,   label: `PDF com referências (${mo})`,     group: g });
     for(let r = 1; r <= rec; r++){
       steps.push({ key: `m${m}-grav${r}`, label: rec > 1 ? `Gravação ${r} (${mo})` : `Gravação (${mo})`, group: g });
     }
     steps.push({ key: `m${m}-edit`,  label: `Edição do material (${mo})`,       group: g });
-    steps.push({ key: `m${m}-final`, label: `PDF de apresentação final (${mo})`, group: g });
   }
   return steps;
 }
@@ -198,9 +196,9 @@ export function projectFlowStage(p){
   if(!next) return 5; // every step done => Entrega
   if(monthly){
     if(next.key.endsWith('-pay')) return 1;
-    if(next.key.endsWith('-script') || next.key.endsWith('-ref')) return 2;
+    if(next.key.endsWith('-script')) return 2;
     if(next.key.includes('-grav')) return 3;
-    if(next.key.endsWith('-edit') || next.key.endsWith('-final')) return 4;
+    if(next.key.endsWith('-edit')) return 4;
     return 0;
   }
   if(next.group === 'Contrato & Pagamento') return /pagamento|recibo/i.test(next.label) ? 1 : 0;

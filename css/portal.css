@@ -187,15 +187,6 @@
   .rec-cal-admin{flex:0 0 auto;}
   .rec-date-num{font-size:13px;color:var(--gray);min-width:104px;flex:0 0 auto;}
   .rec-date-row .date-field{flex:1 1 150px;min-width:0;max-width:240px;}
-  /* Countdown badge — same color language as the payment "days" text
-     (green upcoming / orange today / red overdue), reused here so a scheduled
-     recording's urgency reads at a glance without doing date math. */
-  .rec-status{
-    font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap;
-    background:rgba(95,191,122,0.12);color:var(--green);flex:0 0 auto;
-  }
-  .rec-status.today{background:rgba(240,162,75,0.12);color:#f0a24b;}
-  .rec-status.overdue{background:rgba(229,87,63,0.12);color:var(--red);}
 
   /* client: "Fluxo do projeto" timeline — Início → Pagamento → Roteirização →
      Gravação → Edição → Entrega, a coarser client-facing read of the admin's

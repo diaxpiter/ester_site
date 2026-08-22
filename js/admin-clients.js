@@ -698,14 +698,9 @@ function renderRecordingDates(){
     const iso = currentRecordingDates[s.idx] || '';
     const time = currentRecordingTimes[s.idx] || '';
     const endTime = currentRecordingEndTimes[s.idx] || '';
-    // Reuses the same "Faltam X dias / Vence hoje / Em atraso" countdown +
-    // color language already used for payments — same at-a-glance urgency
-    // read, now for scheduled recordings too.
-    const st = iso ? paymentStatus(iso) : null;
     return `<div class="rec-date-row">
       <span class="rec-date-num">${escapeHtml(s.label)}</span>
       <span class="date-field"><input type="text" class="rec-date-box date-inp" data-idx="${s.idx}" data-iso="${iso}" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">▦</button></span>
-      ${st ? `<span class="rec-status ${st.mod}">${escapeHtml(st.text)}</span>` : ''}
       <span class="rec-time-group">
         <select class="rec-time-box rec-time-start" data-idx="${s.idx}" aria-label="Hora de início">${timeSelectOptions(time, 'início')}</select>
         <span class="rec-time-sep">–</span>

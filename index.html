@@ -139,7 +139,7 @@
 <section class="hero" id="top">
   <div class="hero-eyebrow" data-i18n="hero.eyebrow">Videographer</div>
   <h1>ESTER</h1>
-  <p class="hero-offer" data-i18n-html="hero.offer">Video and photography for beauty and aesthetics brands.</p>
+  <p class="hero-offer" data-i18n-html="hero.offer">Content production for authentic brands.</p>
   <p class="hero-sub" data-i18n="hero.sub">Creating, communicating and connecting dreams.</p>
   <div class="hero-cta">
     <a class="cta-btn cta-btn-primary" data-wa-msg="hero.waText" href="https://wa.me/351913198057" target="_blank" rel="noopener" data-i18n="hero.ctaWhatsapp">Request a meeting</a>
@@ -463,7 +463,7 @@
       "nav.contact": "Contact",
       "nav.clientArea": "My area",
       "hero.eyebrow": "Videographer",
-      "hero.offer": "Content production for beauty and aesthetics brands.",
+      "hero.offer": "Content production for authentic brands.",
       "hero.sub": "Creating, communicating and connecting dreams.",
       "hero.scroll": "Scroll",
       "hero.ctaWhatsapp": "Request a meeting",
@@ -514,7 +514,7 @@
       "nav.contact": "Contato",
       "nav.clientArea": "Minha área",
       "hero.eyebrow": "Produção Audiovisual",
-      "hero.offer": "Produção de conteúdo para <br class=\"brk-mobile\">marcas de beleza e estética.",
+      "hero.offer": "Produção de conteúdo para <br class=\"brk-mobile\">marcas autênticas.",
       "hero.sub": "Criando, comunicando e conectando sonhos.",
       "hero.scroll": "Rolar",
       "hero.ctaWhatsapp": "Solicitar reunião",
@@ -673,7 +673,7 @@
   // (Instagram gives no public API for real counts) — edit them freely per video.
   const WORKS = [
     { poster:'images/reels/capa_etapas.jpeg',     vimeo:'1211852025', mp4:'',                              caption:'Etapas ✦',                likes:1800, comments:90,  shares:41 },
-    { poster:'images/reels/capa_cozinha.jpeg',    vimeo:'1209300599', mp4:'videos/cozinha.mp4?v=2',        caption:'Conteúdo para marcas',    likes:2087, comments:132, shares:58 },
+    { poster:'images/reels/capa_odeio.jpeg',      vimeo:'1220455630', mp4:'',                              caption:'Conteúdo para marcas',    likes:2087, comments:132, shares:58 },
     { poster:'images/reels/capa_bianca.jpeg',     vimeo:'1209300577', mp4:'videos/bianca.mp4?v=2',         caption:'Bastidores da gravação',  likes:1243, comments:86,  shares:34 },
     { poster:'images/reels/capa_original.jpeg',   vimeo:'1209300576', mp4:'videos/video-original.mp4?v=2', caption:'Corte final ✦',           likes:2760, comments:158, shares:67 },
     { poster:'images/reels/capa_gica.jpeg',       vimeo:'1209300575', mp4:'videos/gica.mp4?v=2',           caption:'Storytelling em vídeo',   likes:3120, comments:214, shares:96 },
@@ -833,14 +833,13 @@
       .catch(() => {});
   }
 
-  // Second photo marquee — the 6 WhatsApp shots, scrolling the opposite way.
+  // Second photo marquee — the 5 WhatsApp shots, scrolling the opposite way.
   const photoTrack2 = document.getElementById('photoTrack2');
   if(photoTrack2){
     const whatsapp = [
       'WhatsApp Image 2026-07-16 at 19.43.34.jpeg',
       'WhatsApp Image 2026-07-16 at 19.43.34 (1).jpeg',
       'WhatsApp Image 2026-07-16 at 19.43.35.jpeg',
-      'WhatsApp Image 2026-07-16 at 19.43.35 (1).jpeg',
       'WhatsApp Image 2026-07-16 at 19.48.10.jpeg',
       'WhatsApp Image 2026-07-16 at 19.49.23.jpeg'
     ].map(name => `images/portfolio/${encodeURIComponent(name)}`);
