@@ -532,8 +532,13 @@ document.addEventListener('click', (e) => {
     description: 'Sessão de gravação' + (name ? ' do projeto ' + name : '') + ' com a Ester.'
   });
 });
+// Fixed origin (not location.origin): the admin panel is sometimes opened via
+// Firebase's default *.web.app hosting URL rather than the custom domain, and
+// a location.origin-based link would silently bake that wrong host into the
+// link pasted into client emails/WhatsApp messages.
+const SITE_ORIGIN = 'https://esterprod.com';
 export function clientLink(id){
-  return `${location.origin}${location.pathname}?c=${id}`;
+  return `${SITE_ORIGIN}${location.pathname}?c=${id}`;
 }
 
 export function genId(){ return 'p' + Math.random().toString(36).slice(2, 10); }
