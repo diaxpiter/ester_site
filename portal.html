@@ -183,6 +183,43 @@
     </div>
   </section>
 
+  <!-- ===================== ADMIN DASHBOARD VIEW ===================== -->
+  <section id="view-admin-dashboard" class="hidden">
+    <div class="eyebrow">Admin</div>
+    <h1 class="page-title">Painel.</h1>
+    <p class="lede">Visão geral do negócio — receita, pipeline de produção, capacidade e leads.</p>
+
+    <div class="section-divider" style="margin-top:0;">
+      <h3>Receita</h3>
+      <div class="stat-grid" id="dashRevenueGrid"></div>
+    </div>
+
+    <div class="section-divider">
+      <h3>Projetos por etapa</h3>
+      <div id="dashStagesList"></div>
+    </div>
+
+    <div class="section-divider">
+      <h3>Capacidade — próximos 14 dias</h3>
+      <p class="fin-subtotal" id="dashCapacitySummary"></p>
+      <div id="dashCapacityList"></div>
+    </div>
+
+    <div class="section-divider">
+      <h3>Leads &amp; retenção</h3>
+      <div class="stat-grid" id="dashLeadsGrid"></div>
+    </div>
+
+    <div class="section-divider">
+      <h3>Relatórios</h3>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn btn-ghost" id="dashExportRevenueBtn">Exportar resumo mensal (CSV)</button>
+        <button class="btn btn-ghost" id="dashExportSourceBtn">Exportar clientes por origem (CSV)</button>
+        <button class="btn btn-ghost" id="dashExportPipelineBtn">Exportar pipeline de projetos (CSV)</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ===================== ADMIN EDIT / CREATE VIEW ===================== -->
   <section id="view-admin-edit" class="hidden">
     <a href="#" class="back-link" id="adminBackLink">← Voltar para todos os clientes</a>
@@ -343,14 +380,6 @@
     <div class="section-divider" style="margin-top:44px;">
       <button class="btn" id="adminSaveProjectBtn">Guardar projeto</button>
       <div class="form-msg" id="adminProjectMsg"></div>
-    </div>
-
-    <!-- Contract (monthly packs, daily packs, and pontual/avulso jobs) -->
-    <div class="section-divider">
-      <h3>Contrato</h3>
-      <button class="btn btn-ghost" id="adminGenContractBtn">Gerar contrato (PDF)</button>
-      <button class="btn btn-ghost" id="adminGenContractDocxBtn">Gerar contrato (.docx)</button>
-      <div class="form-msg" id="adminContractMsg"></div>
     </div>
 
     <!-- Danger zone -->

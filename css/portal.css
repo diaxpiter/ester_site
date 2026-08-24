@@ -365,6 +365,17 @@
   #debtsMonthGrid .stat-card.is-alert:hover{border-color:rgba(229,87,63,0.5);}
   #debtsMonthGrid .stat-card.is-total:hover{border-color:rgba(var(--off-white-rgb),0.32);}
 
+  /* admin: Painel (owner dashboard) — informational cards only, no links */
+  #dashRevenueGrid .stat-card,#dashLeadsGrid .stat-card{cursor:default;}
+  #dashRevenueGrid .stat-card:hover,#dashLeadsGrid .stat-card:hover{background:none;border-color:var(--line);}
+  #dashRevenueGrid .stat-card.is-alert:hover{border-color:rgba(229,87,63,0.5);}
+  .stage-row{display:grid;grid-template-columns:150px 1fr 32px;align-items:center;gap:14px;padding:8px 0;}
+  .stage-label{color:var(--gray);font-size:13px;}
+  .stage-bar{display:block;height:8px;border-radius:4px;background:var(--line);overflow:hidden;}
+  .stage-bar-fill{display:block;height:100%;background:#5fbf7a;border-radius:4px;}
+  .stage-count{text-align:right;font-weight:600;font-size:14px;}
+  @media(max-width:520px){.stage-row{grid-template-columns:100px 1fr 28px;gap:8px;}.stage-label{font-size:12px;}}
+
   .board-card-pay{font-size:12px;font-weight:600;margin-top:8px;}
   .board-card-pay.upcoming{color:#5fbf7a;}
   .board-card-pay.today{color:#f0a24b;}

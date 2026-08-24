@@ -1,6 +1,8 @@
 // ============================================================
-//  Vercel Cron (free Hobby plan): automatic payment-reminder emails, 3 days
-//  before due date. Triggered daily by vercel.json's cron entry — chosen over
+//  Vercel Cron (free Hobby plan): automatic payment-reminder emails, sent
+//  3 days before the due date AND again on the due date itself (see the
+//  "advance" vs "today" phase split around the emailRemindersSent dedup key,
+//  below). Triggered daily by vercel.json's cron entry — chosen over
 //  a Firebase Cloud Function because that would require upgrading the
 //  ester-website-ee664 project to the Blaze (pay-as-you-go) plan just for
 //  Cloud Scheduler. Firestore itself is free to read/write from anywhere via
@@ -304,7 +306,15 @@ module.exports = async (req, res) => {
         const due = daysUntil(iso);
         if (due < 0 || due > 3) continue;
 
-        const reminderRef = db.collection("emailRemindersSent").doc(`${clientDoc.id}:${projectId}:${i}`);
+        // Two independent sends per installment: the existing "advance" notice
+        // (days 1-3, dedup key unchanged so already-sent history keeps working)
+        // plus a new "due today" notice (due === 0) under its own key, so a
+        // client who already got the 3-day heads-up still gets a same-day one.
+        const phase = due === 0 ? "today" : "advance";
+        const reminderKey = phase === "advance"
+          ? `${clientDoc.id}:${projectId}:${i}`
+          : `${clientDoc.id}:${projectId}:${i}:${phase}`;
+        const reminderRef = db.collection("emailRemindersSent").doc(reminderKey);
         const already = await reminderRef.get();
         if (already.exists) { skipped++; continue; }
 
@@ -328,7 +338,8 @@ module.exports = async (req, res) => {
             clientId: clientDoc.id,
             projectId,
             idx: i,
-            dueDate: iso
+            dueDate: iso,
+            phase
           });
           sent++;
         } catch (err) {

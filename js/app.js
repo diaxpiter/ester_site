@@ -14,6 +14,7 @@ import { loadLeads } from './admin-leads.js';
 import { loadFinance } from './admin-finance.js';
 import { loadDebts } from './admin-debts-agenda.js';
 import { loadClientDashboard } from './client-dashboard.js';
+import { loadDashboard } from './admin-dashboard.js';
 
 // ============================================================
 //  LIGHT/DARK THEME toggle click
@@ -35,6 +36,7 @@ function routeAdmin(){
   if(h === 'financeiro') loadFinance();
   else if(h === 'a-receber') loadDebts();
   else if(h === 'leads') loadLeads();
+  else if(h === 'painel') loadDashboard();
   else loadAdminList(); // default landing page (fresh login, 'clientes', or any unknown hash)
   setSubnavActive(h);
 }
@@ -69,13 +71,15 @@ function renderClientNav(){
   navDynamic.innerHTML = '';
 }
 function renderAdminNav(){
-  // Only 2 top-level destinations — "Leads" lives inside Clientes and "A
-  // receber" lives inside Financeiro, each reachable via the in-page
-  // subnav-tab pair on those views (see setSubnavActive above). Clientes is
-  // also the default landing page (see routeAdmin above).
+  // 3 top-level destinations — "Leads" lives inside Clientes and "A receber"
+  // lives inside Financeiro, each reachable via the in-page subnav-tab pair
+  // on those views (see setSubnavActive above). Clientes is still the
+  // default landing page on refresh (see routeAdmin above); Painel is the
+  // owner-overview dashboard, reached explicitly via this nav link.
   navDynamic.innerHTML = `
     <button id="navHamburger" class="nav-hamburger" aria-label="Abrir menu" aria-expanded="false"><span></span><span></span><span></span></button>
     <div class="nav-menu" id="navMenu">
+      <a href="#" id="navDashboardLink">Painel</a>
       <a href="#" id="navClientsLink">Clientes</a>
       <a href="#" id="navFinanceLink">Financeiro</a>
     </div>
@@ -97,6 +101,7 @@ function renderAdminNav(){
   document.addEventListener('click', (e) => {
     if(menu.classList.contains('open') && !menu.contains(e.target) && e.target !== burger) closeMenu();
   });
+  document.getElementById('navDashboardLink').addEventListener('click', (e) => { e.preventDefault(); closeMenu(); loadDashboard(); });
   document.getElementById('navClientsLink').addEventListener('click', (e) => { e.preventDefault(); closeMenu(); loadAdminList(); });
   document.getElementById('navFinanceLink').addEventListener('click', (e) => { e.preventDefault(); closeMenu(); loadFinance(); });
 }
