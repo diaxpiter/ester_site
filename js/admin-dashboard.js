@@ -11,7 +11,7 @@ import {
   show, ADMIN_EMAIL, FLOW_STAGES, projectFlowStage, isProjectComplete,
   DAILY_RECORDING_CAPACITY, toast
 } from './core.js';
-import { fetchOutstanding } from './admin-debts-agenda.js';
+import { fetchAllInstallments } from './admin-debts-agenda.js';
 
 // Cached from the last load, so the CSV export buttons don't re-fetch.
 let dashClients = [], dashIncome = [];
@@ -25,13 +25,13 @@ export async function loadDashboard(){
   document.getElementById('dashCapacityList').innerHTML = '';
   document.getElementById('dashLeadsGrid').innerHTML = '';
 
-  let clientsSnap, incomeSnap, leadsSnap, overdueRows;
+  let clientsSnap, incomeSnap, leadsSnap, installments;
   try{
-    [clientsSnap, incomeSnap, leadsSnap, overdueRows] = await Promise.all([
+    [clientsSnap, incomeSnap, leadsSnap, installments] = await Promise.all([
       getDocs(collection(db, "clients")),
       getDocs(collection(db, "income")),
       getDocs(collection(db, "leads")),
-      fetchOutstanding()
+      fetchAllInstallments()
     ]);
   }catch(err){
     document.getElementById('dashRevenueGrid').innerHTML = '<p class="panel-empty">Não foi possível carregar o painel.</p>';
@@ -42,7 +42,7 @@ export async function loadDashboard(){
   dashIncome = incomeSnap.docs.map(d => d.data());
   const leads = leadsSnap.docs.map(d => d.data());
 
-  renderRevenue(dashIncome, overdueRows);
+  renderRevenue(dashIncome, installments.filter(r => !r.paid));
   renderStages(dashClients);
   renderCapacity(dashClients);
   renderLeadsRetention(dashClients, leads);
@@ -66,13 +66,13 @@ function pctDelta(cur, prev){
   const d = ((cur - prev) / prev) * 100;
   return (d >= 0 ? '+' : '') + d.toFixed(0) + '%';
 }
-function renderRevenue(income, overdueRows){
+function renderRevenue(income, unpaidRows){
   const now = new Date();
   const thisMonth = sumByMonthPrefix(income, ymOffset(0));
   const lastMonth = sumByMonthPrefix(income, ymOffset(-1));
   const thisYear = sumByYear(income, now.getFullYear());
   const lastYear = sumByYear(income, now.getFullYear() - 1);
-  const overdue = overdueRows.filter(r => daysUntil(r.iso) < 0);
+  const overdue = unpaidRows.filter(r => daysUntil(r.iso) < 0);
   const overdueTotal = overdue.reduce((s, r) => s + r.amount, 0);
 
   document.getElementById('dashRevenueGrid').innerHTML = `
