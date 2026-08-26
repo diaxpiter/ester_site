@@ -195,7 +195,7 @@ ${bodyHtml}
             <td style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:24px;line-height:1.2;color:#f3f2ee;padding-bottom:5px;">Ester</td>
           </tr>
           <tr>
-            <td style="font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#8c8c86;padding-bottom:20px;">Estephanie Cerqueira&nbsp;&middot;&nbsp;Videomaker &amp; Storymaker</td>
+            <td style="font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#8c8c86;padding-bottom:20px;">Estephanie Cerqueira&nbsp;&middot;&nbsp;Produção Audiovisual</td>
           </tr>
           <tr><td height="1" bgcolor="#2b2b29" style="background-color:#2b2b29;font-size:0;line-height:0;">&nbsp;</td></tr>
           <tr><td style="height:20px;font-size:0;line-height:0;">&nbsp;</td></tr>
