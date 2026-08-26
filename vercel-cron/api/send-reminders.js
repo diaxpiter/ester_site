@@ -1,8 +1,10 @@
 // ============================================================
 //  Vercel Cron (free Hobby plan): automatic payment-reminder emails, sent
-//  3 days before the due date AND again on the due date itself (see the
-//  "advance" vs "today" phase split around the emailRemindersSent dedup key,
-//  below). Triggered daily by vercel.json's cron entry — chosen over
+//  3 days before the due date, again on the due date itself, and once more
+//  on the first day overdue (with the contract's one-time 5% late fee) — see
+//  the "advance" / "today" / "overdue" phase split around the
+//  emailRemindersSent dedup key, below. Triggered daily by vercel.json's
+//  cron entry — chosen over
 //  a Firebase Cloud Function because that would require upgrading the
 //  ester-website-ee664 project to the Blaze (pay-as-you-go) plan just for
 //  Cloud Scheduler. Firestore itself is free to read/write from anywhere via
@@ -121,8 +123,8 @@ function dueText(due) {
   if (due === 1) return "vence amanhã";
   return `vence em ${due} dias`;
 }
-// ---- shared email shell (docs/email-ester.html) ----------------------------
-// This is the same visual system as docs/email-ester.html, the template Ester
+// ---- shared email shell (docs/templates/email-ester.html) ------------------
+// This is the same visual system as docs/templates/email-ester.html, the template Ester
 // pastes into Gmail by hand for prospecting/proposals. Keep the two in sync:
 // black hero band with the italic-serif ESTER wordmark, white body, black
 // signature + footer. Palette from css/index.css: --black #0a0a0a,
@@ -265,6 +267,55 @@ function reminderEmailHtml({ clientFirstName, projectName, parcelaNote, amount, 
   return esterEmailShell({ preheader, bodyHtml });
 }
 
+// One-time 5% late fee (contract clause 2) — flat, not a per-day accrual, so
+// this only ever fires on the client's first overdue day (see the "overdue"
+// phase below). Matches the copy already used in admin-debts-agenda.js's
+// WhatsApp reminder.
+function lateFine(amount) {
+  return amount * 0.05;
+}
+
+function overdueEmailHtml({ clientFirstName, projectName, parcelaNote, amount, iso, daysLate }) {
+  const greetingName = clientFirstName ? ` ${clientFirstName}` : "";
+  const fine = lateFine(amount);
+  const total = amount + fine;
+  const lateText = daysLate === 1 ? "há 1 dia" : `há ${daysLate} dias`;
+
+  const preheader = amount > 0
+    ? `${money(total)} · em atraso ${lateText} (venceu ${formatDatePt(iso)}).`
+    : `Pagamento em atraso ${lateText} (venceu ${formatDatePt(iso)}).`;
+
+  const bodyHtml = `
+        <p style="margin:0 0 18px;">Oi${greetingName}, tudo bem?</p>
+
+        <p style="margin:0 0 22px;">Notamos que o pagamento referente a <strong>${projectName}</strong>${parcelaNote} está em atraso ${lateText} — o vencimento era em ${formatDatePt(iso)}.</p>
+
+        <p style="margin:0 0 22px;">Conforme o contrato, incide uma multa única de 5% sobre o valor original a partir do primeiro dia de atraso. Este valor não se acumula por dia — é aplicado uma única vez.</p>
+
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin:0 0 24px;">
+          <tr>
+            <td style="background-color:#f6f5f2;border-left:2px solid #0a0a0a;padding:16px 18px;font-family:Helvetica,Arial,sans-serif;word-break:break-word;">
+              <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#8c8c86;padding-bottom:6px;">Vencimento original</div>
+              <div style="font-size:15px;line-height:1.4;color:#1f1f1e;padding-bottom:14px;">${formatDatePt(iso)}${amount > 0 ? `&nbsp;&nbsp;&middot;&nbsp;&nbsp;${money(amount)}` : ""}</div>
+              <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#8c8c86;padding-bottom:6px;">Multa (5%)</div>
+              <div style="font-size:15px;line-height:1.4;color:#1f1f1e;padding-bottom:14px;">+ ${money(fine)}</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+                <tr><td height="1" bgcolor="#e2e0da" style="background-color:#e2e0da;font-size:0;line-height:0;">&nbsp;</td></tr>
+                <tr><td style="height:14px;font-size:0;line-height:0;">&nbsp;</td></tr>
+              </table>
+              <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#8c8c86;padding-bottom:6px;">Valor atualizado</div>
+              <div style="font-size:19px;line-height:1.3;color:#1f1f1e;"><strong>${money(total)}</strong></div>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin:0 0 14px;color:#5a5a57;">Caso o pagamento já tenha sido efetuado, por favor desconsidere esta mensagem.</p>
+
+        <p style="margin:0;color:#5a5a57;">Qualquer dúvida ou necessidade de esclarecimento, estou à disposição.</p>`;
+
+  return esterEmailShell({ preheader, bodyHtml });
+}
+
 module.exports = async (req, res) => {
   // Reject anything that isn't Vercel's own Cron trigger (which echoes
   // CRON_SECRET back as a Bearer token) — otherwise this URL is public.
@@ -300,17 +351,22 @@ module.exports = async (req, res) => {
       for (let i = 0; i < dates.length; i++) {
         const iso = dates[i];
         if (!iso || paid[i]) continue;
-        // 0–3 day window (not an exact "== 3" match): self-healing against a
-        // missed cron run or data added after the 3-day mark already passed.
-        // The emailRemindersSent dedup below still guarantees a single send.
+        // -1–3 day window (not an exact match): self-healing against a missed
+        // cron run or data added after the mark already passed. The
+        // emailRemindersSent dedup below still guarantees a single send.
+        // due === -1 (first day overdue) is included on top of the existing
+        // 0-3 day range so the one-time 5% fine notice goes out; due < -1 is
+        // deliberately NOT chased here — the fine is flat, not per-day, so
+        // there's no second automated nudge after day 1 (see lateFine()).
         const due = daysUntil(iso);
-        if (due < 0 || due > 3) continue;
+        if (due < -1 || due > 3) continue;
 
-        // Two independent sends per installment: the existing "advance" notice
-        // (days 1-3, dedup key unchanged so already-sent history keeps working)
-        // plus a new "due today" notice (due === 0) under its own key, so a
-        // client who already got the 3-day heads-up still gets a same-day one.
-        const phase = due === 0 ? "today" : "advance";
+        // Three independent sends per installment: the existing "advance"
+        // notice (days 1-3, dedup key unchanged so already-sent history keeps
+        // working), the existing "due today" notice (due === 0), and a new
+        // "overdue" notice (due === -1, with the 5% fine) — each under its
+        // own key, so a client can receive more than one across the phases.
+        const phase = due === -1 ? "overdue" : due === 0 ? "today" : "advance";
         const reminderKey = phase === "advance"
           ? `${clientDoc.id}:${projectId}:${i}`
           : `${clientDoc.id}:${projectId}:${i}:${phase}`;
@@ -319,12 +375,19 @@ module.exports = async (req, res) => {
         if (already.exists) { skipped++; continue; }
 
         const parcelaNote = dates.length > 1 ? ` (parcela ${i + 1}/${dates.length})` : "";
+        const amount = Number(amounts[i]) || 0;
+        const subject = phase === "overdue"
+          ? "Pagamento em atraso — multa de 5% aplicada"
+          : `Lembrete: pagamento ${dueText(due)}`;
+        const html = phase === "overdue"
+          ? overdueEmailHtml({ clientFirstName, projectName, parcelaNote, amount, iso, daysLate: -due })
+          : reminderEmailHtml({ clientFirstName, projectName, parcelaNote, amount, iso, due });
         try {
           await transporter.sendMail({
             from: `Estephanie Cerqueira <${ADMIN_EMAIL}>`,
             to: clientEmail,
-            subject: `Lembrete: pagamento ${dueText(due)}`,
-            html: reminderEmailHtml({ clientFirstName, projectName, parcelaNote, amount: Number(amounts[i]) || 0, iso, due }),
+            subject,
+            html,
             // "High priority" headers — the closest a sender can get to Gmail's
             // yellow "Important" marker, which is NOT settable by the sender:
             // it's Gmail's own ML classification based on the recipient's past
