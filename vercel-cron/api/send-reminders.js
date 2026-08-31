@@ -11,9 +11,12 @@
 //  a service account, regardless of the Firebase Hosting/Functions plan — so
 //  everything on the Firebase side stays exactly as-is on Spark (free).
 //
-//  Sends via Gmail SMTP (nodemailer) using the same account as ADMIN_EMAIL —
-//  no custom domain to verify with a transactional email API, just an App
-//  Password on an existing 2FA-enabled Google account.
+//  Sends via Brevo SMTP (nodemailer) as SENDER_EMAIL on the authenticated
+//  esterprod.com domain, with ADMIN_EMAIL as Reply-To so client replies still
+//  land in the Gmail inbox. Brevo signs with DKIM (brevo1/brevo2._domainkey)
+//  and the branded subdomain mail.esterprod.com carries the return-path and
+//  tracking links, so DMARC aligns. contato@esterprod.com must exist as a
+//  verified sender in Brevo or the relay rejects the message.
 //
 //  Payment-date logic (getProjects / projectPaymentDates / daysUntil) is
 //  ported from ../../js/core.js rather than imported: core.js initializes the
@@ -27,9 +30,12 @@
 //                                     -> Project Settings -> Service accounts
 //                                     -> Generate new private key (paste the
 //                                     whole file contents as one value)
-//    GMAIL_APP_PASSWORD             - Google Account -> Security -> App
-//                                     passwords, generated for
-//                                     contatoestephanie@gmail.com
+//    BREVO_SMTP_USER                - Brevo -> SMTP & API -> SMTP: the login
+//                                     it shows there (the account email or a
+//                                     numeric id), NOT the sender address
+//    BREVO_SMTP_KEY                 - the SMTP key generated on that same
+//                                     page; shown once, so store it on
+//                                     creation
 //    CRON_SECRET                    - any random string; Vercel automatically
 //                                     sends it back as a Bearer token when
 //                                     the Cron Job (not a random visitor)
@@ -39,6 +45,7 @@ const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 
 const ADMIN_EMAIL = "contatoestephanie@gmail.com";
+const SENDER_EMAIL = "contato@esterprod.com";
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -208,7 +215,7 @@ ${bodyHtml}
             <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.75;color:#f3f2ee;padding-bottom:8px;word-break:break-word;"><span style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#6f6f6a;">WhatsApp</span>&nbsp;&nbsp;&nbsp;<a href="https://wa.me/351913198057" target="_blank" style="color:#f3f2ee;text-decoration:none;">+351 913 198 057</a></td>
           </tr>
           <tr>
-            <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.75;color:#f3f2ee;padding-bottom:8px;word-break:break-word;"><span style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#6f6f6a;">Email</span>&nbsp;&nbsp;&nbsp;<a href="mailto:${ADMIN_EMAIL}" style="color:#f3f2ee;text-decoration:none;">${ADMIN_EMAIL}</a></td>
+            <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.75;color:#f3f2ee;padding-bottom:8px;word-break:break-word;"><span style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#6f6f6a;">Email</span>&nbsp;&nbsp;&nbsp;<a href="mailto:${SENDER_EMAIL}" style="color:#f3f2ee;text-decoration:none;">${SENDER_EMAIL}</a></td>
           </tr>
           <tr>
             <td style="font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.75;color:#f3f2ee;word-break:break-word;"><span style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#6f6f6a;">Portfólio</span>&nbsp;&nbsp;&nbsp;<a href="https://esterprod.com" target="_blank" style="color:#f3f2ee;text-decoration:none;">esterprod.com</a></td>
@@ -327,8 +334,10 @@ module.exports = async (req, res) => {
 
   const db = admin.firestore();
   const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: ADMIN_EMAIL, pass: process.env.GMAIL_APP_PASSWORD }
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    secure: false,
+    auth: { user: process.env.BREVO_SMTP_USER, pass: process.env.BREVO_SMTP_KEY }
   });
 
   const clientsSnap = await db.collection("clients").get();
@@ -337,7 +346,7 @@ module.exports = async (req, res) => {
   for (const clientDoc of clientsSnap.docs) {
     const data = clientDoc.data();
     const clientEmail = data.email || "";
-    if (!clientEmail || clientEmail === ADMIN_EMAIL) continue;
+    if (!clientEmail || clientEmail === ADMIN_EMAIL || clientEmail === SENDER_EMAIL) continue;
     const clientFirstName = data.firstName || "";
 
     for (const p of getProjects(data)) {
@@ -384,7 +393,8 @@ module.exports = async (req, res) => {
           : reminderEmailHtml({ clientFirstName, projectName, parcelaNote, amount, iso, due });
         try {
           await transporter.sendMail({
-            from: `Estephanie Cerqueira <${ADMIN_EMAIL}>`,
+            from: `Estephanie Cerqueira <${SENDER_EMAIL}>`,
+            replyTo: ADMIN_EMAIL,
             to: clientEmail,
             subject,
             html,
