@@ -24,6 +24,17 @@
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Hero background: preloaded so the LCP image is requested before the CSS
+     that references it is parsed. Two entries so mobile never fetches the desktop file. -->
+<link rel="preload" as="image" href="images/hero.webp" media="(min-width:721px)" fetchpriority="high">
+<link rel="preload" as="image" href="images/hero-mobile.webp" media="(max-width:720px)" fetchpriority="high">
+<script>
+  // Flags no-WebP browsers so the hero falls back to images/hero.jpg.
+  (function(){try{var c=document.createElement('canvas');
+    if(!(c.getContext&&c.getContext('2d')&&c.toDataURL('image/webp').indexOf('data:image/webp')===0))
+      document.documentElement.classList.add('no-webp');
+  }catch(e){document.documentElement.classList.add('no-webp');}})();
+</script>
 <script>document.documentElement.classList.add('hero-anim-pending','reveal-anim-pending');</script>
 <script>
   // Safety net: the CDN <script> tags below (GSAP/ScrollTrigger/Lenis) are render-blocking,

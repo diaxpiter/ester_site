@@ -240,6 +240,48 @@
     padding:120px 40px 60px;
   }
 
+  /* Hero background photo — the portrait sits behind the type, darkened by a
+     gradient + vignette so the eyebrow/H1/sub keep their contrast. ::before is
+     the image layer, ::after the shading; children are lifted to z-index 1. */
+  .hero::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image:url("../images/hero.webp");
+    background-size:cover;
+    background-position:center 68%;
+    background-repeat:no-repeat;
+    z-index:0;
+  }
+  /* Fallback for browsers without WebP support. */
+  .no-webp .hero::before{background-image:url("../images/hero.jpg");}
+
+  .hero::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:0;
+    background:
+      radial-gradient(120% 85% at 50% 45%, rgba(10,10,10,0.28) 0%, rgba(10,10,10,0.72) 100%),
+      linear-gradient(180deg, rgba(10,10,10,0.82) 0%, rgba(10,10,10,0.52) 40%, rgba(10,10,10,0.62) 75%, var(--black) 100%);
+  }
+
+  .hero > *{position:relative;z-index:1;}
+
+  @media (max-width:720px){
+    .hero::before{
+      background-image:url("../images/hero-mobile.webp");
+      background-size:auto 132%;
+      background-position:center 60%;
+    }
+    .no-webp .hero::before{background-image:url("../images/hero.jpg");}
+    .hero::after{
+      background:
+        radial-gradient(120% 80% at 50% 42%, rgba(10,10,10,0.30) 0%, rgba(10,10,10,0.75) 100%),
+        linear-gradient(180deg, rgba(10,10,10,0.80) 0%, rgba(10,10,10,0.55) 38%, rgba(10,10,10,0.68) 72%, var(--black) 100%);
+    }
+  }
+
   .hero-eyebrow{
     font-size:12px;
     text-transform:uppercase;
