@@ -249,7 +249,7 @@
     inset:0;
     background-image:url("../images/hero.webp");
     background-size:cover;
-    background-position:center 68%;
+    background-position:center 35%;
     background-repeat:no-repeat;
     z-index:0;
   }
@@ -271,8 +271,8 @@
   @media (max-width:720px){
     .hero::before{
       background-image:url("../images/hero-mobile.webp");
-      background-size:auto 132%;
-      background-position:center 60%;
+      background-size:cover;
+      background-position:center 30%;
     }
     .no-webp .hero::before{background-image:url("../images/hero.jpg");}
     .hero::after{
