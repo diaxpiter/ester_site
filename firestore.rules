@@ -33,8 +33,13 @@ service cloud.firestore {
       // testimonial via their personal link — the doc id is already the secret
       // (same trust model as the public `get` above), and this is restricted
       // to touching only the `testimonial` field so nothing else is exposed.
+      // The size cap keeps a held link from being used to write unbounded
+      // data into the doc. testimonial is written as { text, updatedAt } —
+      // see js/client-dashboard.js's testimonialSubmitBtn handler.
       allow update: if isAdmin()
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['testimonial']);
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['testimonial'])
+            && request.resource.data.testimonial.text is string
+            && request.resource.data.testimonial.text.size() <= 2000);
     }
 
     match /income/{entryId} {
