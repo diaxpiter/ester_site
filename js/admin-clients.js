@@ -61,7 +61,7 @@ function clientCard(docSnap){
   const payInfo = earliestIso ? paymentStatus(earliestIso) : null;
   if(payInfo) card.dataset.urgency = payInfo.mod;
   card.innerHTML = `
-    <div class="client-avatar">${data.iconDataUrl ? `<img src="${data.iconDataUrl}" alt="">` : escapeHtml(initials.toUpperCase() || '?')}</div>
+    <div class="client-avatar">${data.iconDataUrl ? `<img src="${escapeAttr(data.iconDataUrl)}" alt="">` : escapeHtml(initials.toUpperCase() || '?')}</div>
     <div class="client-card-body">
       <div class="name">${escapeHtml(name || data.email || 'Cliente')}</div>
       <div class="email">${escapeHtml(data.email || '')}</div>

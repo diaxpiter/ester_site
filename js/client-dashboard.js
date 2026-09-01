@@ -351,7 +351,7 @@ function clientProjectCard(p){
   const pack = p.pack ? PACKS[p.pack] : null;
   const period = projectPeriod(p);
   const drive = p.driveLink
-    ? `<a class="round-btn" href="${encodeURI(p.driveLink)}" target="_blank" rel="noopener" title="Google Drive"><img src="images/logos/google-drive-color-icon.png" alt="Google Drive"></a>` : '';
+    ? `<a class="round-btn" href="${escapeAttr(encodeURI(p.driveLink))}" target="_blank" rel="noopener" title="Google Drive"><img src="images/logos/google-drive-color-icon.png" alt="Google Drive"></a>` : '';
   const doneBadge = isProjectComplete(p) ? '<span class="badge-done">✓ Concluído</span>' : '';
   return `
     <div class="project-card">
