@@ -49,6 +49,7 @@
 // ============================================================
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
+const crypto = require("crypto");
 
 const ADMIN_EMAIL = "contatoestephanie@gmail.com";
 const SENDER_EMAIL = "contato@esterprod.com";
@@ -343,8 +344,12 @@ function overdueEmailHtml({ clientFirstName, projectName, parcelaNote, amount, i
 module.exports = async (req, res) => {
   // Reject anything that isn't Vercel's own Cron trigger (which echoes
   // CRON_SECRET back as a Bearer token) — otherwise this URL is public.
-  const auth = req.headers.authorization || "";
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Constant-time compare so a network timing side-channel can't leak the
+  // secret one byte at a time.
+  const auth = Buffer.from(req.headers.authorization || "");
+  const expected = Buffer.from(`Bearer ${process.env.CRON_SECRET}`);
+  const authorized = auth.length === expected.length && crypto.timingSafeEqual(auth, expected);
+  if (!authorized) {
     res.status(401).json({ error: "unauthorized" });
     return;
   }
