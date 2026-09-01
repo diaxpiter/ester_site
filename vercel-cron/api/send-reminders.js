@@ -80,6 +80,13 @@ const PACK_NAMES = {
   "classes-start": "Start Plan", "classes-essential": "Essential Plan", "classes-pro": "Pro Plan"
 };
 
+// Escapes admin-entered strings (client first name, project name) before they're
+// interpolated into the HTML email body — no DOM here (plain Node), so no
+// element.textContent trick like js/core.js's escapeHtml.
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 function addMonthsIso(iso, n) {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, (m - 1) + n, d);
@@ -251,6 +258,8 @@ ${bodyHtml}
 }
 
 function reminderEmailHtml({ clientFirstName, projectName, parcelaNote, amount, iso, due }) {
+  clientFirstName = escapeHtml(clientFirstName);
+  projectName = escapeHtml(projectName);
   const greetingName = clientFirstName ? ` ${clientFirstName}` : "";
   const amountText = amount > 0 ? `no valor de <strong>${money(amount)}</strong> ` : "";
 
@@ -289,6 +298,8 @@ function lateFine(amount) {
 }
 
 function overdueEmailHtml({ clientFirstName, projectName, parcelaNote, amount, iso, daysLate }) {
+  clientFirstName = escapeHtml(clientFirstName);
+  projectName = escapeHtml(projectName);
   const greetingName = clientFirstName ? ` ${clientFirstName}` : "";
   const fine = lateFine(amount);
   const total = amount + fine;
