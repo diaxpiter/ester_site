@@ -15,6 +15,7 @@ import { loadFinance } from './admin-finance.js';
 import { loadDebts } from './admin-debts-agenda.js';
 import { loadClientDashboard } from './client-dashboard.js';
 import { loadDashboard } from './admin-dashboard.js';
+import { loadCentral } from './admin-central.js';
 
 // ============================================================
 //  LIGHT/DARK THEME toggle click
@@ -37,6 +38,7 @@ function routeAdmin(){
   else if(h === 'a-receber') loadDebts();
   else if(h === 'leads') loadLeads();
   else if(h === 'painel') loadDashboard();
+  else if(h === 'central') loadCentral();
   else loadAdminList(); // default landing page (fresh login, 'clientes', or any unknown hash)
   setSubnavActive(h);
 }
@@ -71,7 +73,7 @@ function renderClientNav(){
   navDynamic.innerHTML = '';
 }
 function renderAdminNav(){
-  // 3 top-level destinations — "Leads" lives inside Clientes and "A receber"
+  // 4 top-level destinations — "Leads" lives inside Clientes and "A receber"
   // lives inside Financeiro, each reachable via the in-page subnav-tab pair
   // on those views (see setSubnavActive above). Clientes is still the
   // default landing page on refresh (see routeAdmin above); Painel is the
@@ -82,6 +84,7 @@ function renderAdminNav(){
       <a href="#" id="navDashboardLink">Painel</a>
       <a href="#" id="navClientsLink">Clientes</a>
       <a href="#" id="navFinanceLink">Financeiro</a>
+      <a href="#" id="navCentralLink">Central</a>
     </div>
   `;
   const menu = document.getElementById('navMenu');
@@ -104,6 +107,7 @@ function renderAdminNav(){
   document.getElementById('navDashboardLink').addEventListener('click', (e) => { e.preventDefault(); closeMenu(); loadDashboard(); });
   document.getElementById('navClientsLink').addEventListener('click', (e) => { e.preventDefault(); closeMenu(); loadAdminList(); });
   document.getElementById('navFinanceLink').addEventListener('click', (e) => { e.preventDefault(); closeMenu(); loadFinance(); });
+  document.getElementById('navCentralLink').addEventListener('click', (e) => { e.preventDefault(); closeMenu(); loadCentral(); });
 }
 
 // ============================================================

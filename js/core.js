@@ -395,7 +395,7 @@ export function toggleTheme(){
   sel.innerHTML = html;
 })();
 
-export const views = ["view-admin-auth","view-client-error","view-dashboard","view-admin","view-admin-leads","view-admin-edit","view-admin-project","view-admin-debts","view-admin-finance","view-admin-dashboard"];
+export const views = ["view-admin-auth","view-client-error","view-dashboard","view-admin","view-admin-leads","view-admin-edit","view-admin-project","view-admin-debts","view-admin-finance","view-admin-dashboard","view-admin-central"];
 // The "due soon / overdue" nudge only belongs on A receber — every other view
 // hides it here so callers don't each need to remember to. checkDueSoon()
 // (admin-debts-agenda.js) is what re-populates and un-hides it.

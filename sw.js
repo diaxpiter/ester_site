@@ -2,7 +2,7 @@
 // Goal: make the portal installable + fast, WITHOUT breaking Firebase.
 // Strategy: only touch same-origin GET requests. Firestore/Auth/Google Fonts
 // (cross-origin) pass straight through, untouched, so live data is never stale.
-const CACHE = 'ester-v18';
+const CACHE = 'ester-v19';
 const SHELL = [
   'portal.html',
   'index.html',
@@ -17,6 +17,8 @@ const SHELL = [
   'js/admin-debts-agenda.js',
   'js/admin-clients.js',
   'js/admin-leads.js',
+  'js/admin-central.js',
+  'js/admin-dashboard.js',
   'js/app.js'
 ];
 
