@@ -16,6 +16,7 @@
       "vercel-cron/**",
       "videos/*.mov",
       "videos/*.mp4",
+      "!videos/ana-rita.mp4",
       "videos/*video-converter*"
     ],
     "cleanUrls": true,

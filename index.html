@@ -208,14 +208,36 @@
   </div>
 </section>
 
+<section class="section showreel" id="showreel">
+  <div class="wrap">
+    <div class="section-head no-divider" data-reveal>
+      <div>
+        <h2 data-i18n="showreel.title">Original Production</h2>
+      </div>
+      <p class="section-note" data-i18n="showreel.credit">Concept, script, direction, filming and editing by Ester.</p>
+    </div>
+    <div class="showreel-stage" data-reveal>
+      <video
+        id="showreelVideo"
+        class="showreel-video"
+        poster="images/showreel-poster.jpg"
+        controls
+        playsinline
+        preload="none"
+        width="1920" height="1080">
+        <source src="videos/ana-rita.mp4?v=1" type="video/mp4">
+      </video>
+    </div>
+  </div>
+</section>
+
 <section class="section" id="work">
   <div class="wrap">
-    <div class="section-head" data-reveal>
+    <div class="section-head no-divider" data-reveal>
       <div>
-        <div class="section-eyebrow" data-i18n="work.eyebrow">Selected Work</div>
-        <h2 data-i18n="work.title">Recent films</h2>
+        <h2 data-i18n="work.title">Content Production</h2>
+        <p class="section-tagline" data-i18n="work.tagline">Social media content creation</p>
       </div>
-      <p data-i18n="work.sub">A lookbook of transformations — captured close, cut clean.</p>
     </div>
 
     <div class="reel-wrap" data-reveal>
@@ -230,16 +252,18 @@
   <div class="wrap">
     <div class="section-head photos-head" data-reveal>
       <div>
-        <h2 data-i18n="photos.title">Fotografia para marcas</h2>
+        <h2 data-i18n="photos.title">Photos</h2>
         <p class="photos-intro" data-i18n="photos.sub">Photography is a powerful tool to communicate with authority and build real connections that empower people, brands and businesses.</p>
       </div>
     </div>
-  </div>
-  <div class="photo-marquee" data-reveal>
-    <div class="photo-marquee-track" id="photoTrack"></div>
-  </div>
-  <div class="photo-marquee" data-reveal>
-    <div class="photo-marquee-track reverse" id="photoTrack2"></div>
+    <div class="photo-grid" data-reveal>
+      <img src="images/portfolio/foto_1.jpeg" alt="" loading="lazy" decoding="async">
+      <img src="images/portfolio/foto_2.jpeg" alt="" loading="lazy" decoding="async">
+      <img src="images/portfolio/foto_3.jpeg" alt="" loading="lazy" decoding="async">
+      <img src="images/portfolio/foto_4.jpeg" alt="" loading="lazy" decoding="async">
+      <img src="images/portfolio/foto_5.jpeg" alt="" loading="lazy" decoding="async">
+      <img src="images/portfolio/foto_6.jpeg" alt="" loading="lazy" decoding="async">
+    </div>
   </div>
 </section>
 
@@ -498,10 +522,9 @@
       "tick.content": "Content creation",
       "tick.direction": "Shoot direction",
       "tick.events": "Event coverage",
-      "work.eyebrow": "Selected Work",
-      "work.title": "Recent films",
-      "work.sub": "A lookbook of transformations — captured close, cut clean.",
-      "photos.title": "Brand photography",
+      "work.title": "Content Production",
+      "work.tagline": "Social media content creation",
+      "photos.title": "Photos",
       "photos.sub": "Photography is a powerful tool to communicate with authority and build real connections that empower people, brands and businesses.",
       "card.balayage": "Balayage Session",
       "card.studio": "Studio Set",
@@ -515,6 +538,8 @@
       "about.p2": "I've worked in the digital world for over 5 years. Content creation, shoot direction and event coverage are some of the services I offer.",
       "about.stat1": "Films Delivered",
       "about.stat3": "Years Shooting",
+      "showreel.title": "Original Production",
+      "showreel.credit": "Concept, script, direction, filming and editing by Ester.",
       "contact.eyebrow": "Get in touch",
       "contact.title": "Together, let's create<br>something memorable.",
       "footer.rights": "© 2026 Ester"
@@ -549,10 +574,9 @@
       "tick.content": "Captação de conteúdo",
       "tick.direction": "Direção de gravação",
       "tick.events": "Cobertura de eventos",
-      "work.eyebrow": "Trabalhos Selecionados",
-      "work.title": "Produções recentes",
-      "work.sub": "Um lookbook de transformações — captadas de perto, editadas com precisão.",
-      "photos.title": "Fotografia para marcas",
+      "work.title": "Produção de Conteúdo",
+      "work.tagline": "Criação de conteúdos para redes sociais",
+      "photos.title": "Fotografias",
       "photos.sub": "A fotografia é uma ferramenta poderosa para comunicar com autoridade e criar conexões reais que fortalecem pessoas, marcas e negócios.",
       "card.balayage": "Sessão de Balayage",
       "card.studio": "Set de Estúdio",
@@ -566,6 +590,8 @@
       "about.p2": "Trabalho há mais de 5 anos com o mundo digital. Captação de conteúdo, direção de gravação e cobertura de eventos são alguns dos meus serviços.",
       "about.stat1": "Conteúdos Entregues",
       "about.stat3": "Anos de Experiência",
+      "showreel.title": "Produção Autoral",
+      "showreel.credit": "Conceito, roteiro, direção, captação e edição por Ester.",
       "contact.eyebrow": "Entre em contato",
       "contact.title": "Juntos vamos criar<br>algo memorável.",
       "footer.rights": "© 2026 Ester"
@@ -815,54 +841,6 @@
       fab.classList.add('visible');
     }
   })();
-
-  // Photo marquee — build in a random order each load so same-model shots
-  // (e.g. photos 2–5) don't appear clustered/repetitive.
-  const photoTrack = document.getElementById('photoTrack');
-  if(photoTrack){
-    // Photos are listed in images/portfolio/manifest.json (any names / any count).
-    // Shuffled each load so same-model shots don't cluster; the same shuffled
-    // order is duplicated so the marquee loop stays seamless.
-    fetch('images/portfolio/manifest.json')
-      .then(r => r.json())
-      .then(list => {
-        const photos = (list || []).map(name => `images/portfolio/${name}`);
-        for(let i = photos.length - 1; i > 0; i--){        // Fisher–Yates shuffle
-          const j = Math.floor(Math.random() * (i + 1));
-          [photos[i], photos[j]] = [photos[j], photos[i]];
-        }
-        // BOTH copies load eagerly. The marquee scrolls via CSS transform, and
-        // lazy-load (IntersectionObserver) ignores transforms — so a lazy copy
-        // never triggers and its frames stay blank (dark #111), which read as the
-        // strip "going black" as the second copy scrolls into view. The duplicate
-        // reuses the same cached files, so eager costs no extra downloads.
-        const build = (dup) => photos.map(src =>
-          `<img src="${src}" loading="eager" decoding="async" ${dup ? 'alt="" aria-hidden="true"' : 'alt="Fotografia para marcas"'}>`
-        ).join('');
-        photoTrack.innerHTML = build(false) + build(true);
-      })
-      .catch(() => {});
-  }
-
-  // Second photo marquee — the 5 WhatsApp shots, scrolling the opposite way.
-  const photoTrack2 = document.getElementById('photoTrack2');
-  if(photoTrack2){
-    const whatsapp = [
-      'WhatsApp Image 2026-07-16 at 19.43.34.jpeg',
-      'WhatsApp Image 2026-07-16 at 19.43.34 (1).jpeg',
-      'WhatsApp Image 2026-07-16 at 19.43.35.jpeg',
-      'WhatsApp Image 2026-07-16 at 19.48.10.jpeg',
-      'WhatsApp Image 2026-07-16 at 19.49.23.jpeg'
-    ].map(name => `images/portfolio/${encodeURIComponent(name)}`);
-    for(let i = whatsapp.length - 1; i > 0; i--){          // Fisher–Yates shuffle
-      const j = Math.floor(Math.random() * (i + 1));
-      [whatsapp[i], whatsapp[j]] = [whatsapp[j], whatsapp[i]];
-    }
-    const build2 = (dup) => whatsapp.map(src =>
-      `<img src="${src}" loading="eager" decoding="async" ${dup ? 'alt="" aria-hidden="true"' : 'alt="Fotografia para marcas"'}>`
-    ).join('');
-    photoTrack2.innerHTML = build2(false) + build2(true);
-  }
 
   // Register the PWA service worker so the site is installable (home-screen icon).
   if('serviceWorker' in navigator){

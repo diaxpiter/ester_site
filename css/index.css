@@ -465,6 +465,24 @@
     font-weight:400;
   }
 
+  .section-head.no-divider{
+    border-bottom:none;
+    padding-bottom:0;
+  }
+  .section-note{
+    max-width:320px;
+    font-size:14px;
+    color:var(--gray);
+    line-height:1.6;
+    text-align:right;
+  }
+  .section-tagline{
+    margin-top:14px;
+    font-size:14px;
+    color:var(--gray);
+    line-height:1.6;
+  }
+
   .photos-head{
     display:block;
     border-bottom:none;
@@ -478,14 +496,6 @@
     color:var(--gray);
     line-height:1.7;
     text-align:left;
-  }
-
-  .section-head p{
-    max-width:320px;
-    font-size:14px;
-    color:var(--gray);
-    line-height:1.6;
-    text-align:right;
   }
 
   /* ===== HOW IT WORKS ===== */
@@ -649,48 +659,34 @@
   .reel-next{ right:8px; }
   @media (max-width:700px){ .reel-arrow{ display:none; } }
 
-  /* ===== PHOTO MARQUEE ===== */
-  .photo-marquee{
-    overflow:hidden;
+  /* ===== PHOTO GRID ===== */
+  .photo-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:24px;
     margin-top:56px;
   }
-  .photo-marquee-track{
-    display:flex;
-    width:max-content;
-    animation:photoscroll 50s linear infinite;
-    will-change:transform;               /* keep it on a stable compositor layer */
-    -webkit-backface-visibility:hidden;  /* avoids iOS discarding the layer to black */
-    backface-visibility:hidden;
-  }
-  .photo-marquee:hover .photo-marquee-track{animation-play-state:paused;}
-  .photo-marquee-track img{
-    flex:0 0 auto;
-    width:300px;
+  .photo-grid img{
+    width:100%;
     aspect-ratio:3/4;
     object-fit:cover;
-    margin-right:24px;      /* interval between photos (part of the loop unit) */
+    border-radius:4px;
     background:#111;
   }
-  @keyframes photoscroll{
-    from{transform:translateX(0);}
-    to{transform:translateX(-50%);}   /* exactly one set of 8 → seamless */
-  }
-  /* second row scrolls the opposite direction */
-  .photo-marquee-track.reverse{
-    animation-name:photoscroll-reverse;
-  }
-  @keyframes photoscroll-reverse{
-    from{transform:translateX(-50%);}
-    to{transform:translateX(0);}
-  }
-  .photo-marquee + .photo-marquee{margin-top:24px;}
-  @media (max-width:600px){
-    .photo-marquee{margin-top:36px;}
-    .photo-marquee + .photo-marquee{margin-top:16px;}
-    .photo-marquee-track img{width:220px;margin-right:16px;}
+  @media (max-width:700px){
+    .photo-grid{
+      grid-template-columns:repeat(2, 1fr);
+      gap:12px;
+      margin-top:36px;
+    }
   }
 
   /* ===== ABOUT ===== */
+  #about .wrap{
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:48px;
+  }
   #about{
     display:flex;
     flex-direction:column;
@@ -724,6 +720,7 @@
     background:linear-gradient(155deg, #232323, #060606 75%);
     position:relative;
     overflow:hidden;
+    border-radius:20px;
   }
   .about-portrait img{
     display:block;
@@ -736,6 +733,7 @@
     position:absolute;
     inset:0;
     border:1px solid var(--line);
+    border-radius:inherit;
   }
 
   .about-text p{
@@ -765,6 +763,27 @@
     letter-spacing:0.15em;
     color:var(--gray);
     margin-top:6px;
+  }
+
+  /* ===== FEATURED SHOWREEL ===== */
+  .showreel-stage{
+    position:relative;
+    width:100%;
+    aspect-ratio:16/9;
+    border-radius:10px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    background:#000;
+  }
+  .showreel-video{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    background:#000;
+  }
+  @media (max-width:720px){
+    .showreel-stage{ border-radius:6px; }
   }
 
   /* ===== TESTIMONIALS ===== */
@@ -941,9 +960,11 @@
     body.menu-open{overflow:hidden;}
     .wrap{padding:0 24px;}
     .section{padding:90px 0;}
+    #about .wrap{padding:28px 22px; border-radius:14px;}
+    .about-portrait{border-radius:14px;}
     /* tighter run between About → Fotos → Contacto on phones
        (small bottom pad under the photos + small top pad above contact) */
-    #about, #work{padding:40px 0;}
+    #about, #showreel, #work{padding:40px 0;}
     #photos{padding:40px 0 24px;}
     /* Don't center contact in a full-height viewport on phones — that leaves a big
        empty gap under the photos. Anchor it near the top instead. */
@@ -991,8 +1012,6 @@
   @media (prefers-reduced-motion: reduce){
     .scroll-line::after{animation:none;}
     .marquee-track{animation:none;}
-    .photo-marquee-track{animation:none;}
-    .photo-marquee{overflow-x:auto;}
     html{scroll-behavior:auto;}
     /* belt-and-suspenders: the hero intro script already skips itself and reveals
        immediately when reduced-motion is on, but don't leave the hero hidden if for
