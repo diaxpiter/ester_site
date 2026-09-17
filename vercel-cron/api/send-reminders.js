@@ -18,6 +18,12 @@
 //  tracking links, so DMARC aligns. contato@esterprod.com must exist as a
 //  verified sender in Brevo or the relay rejects the message.
 //
+//  Every invocation also writes one document to the emailReminderRuns
+//  collection (counts, every installment inside the send window with its
+//  outcome, and any error). Read it in the Firebase Console when something
+//  looks off — the Hobby plan on Vercel keeps no cron history and only about
+//  an hour of runtime logs, so Firestore is the only durable audit trail.
+//
 //  Payment-date logic (getProjects / projectPaymentDates / daysUntil) is
 //  ported from ../../js/core.js rather than imported: core.js initializes the
 //  Firebase Web SDK and touches `document` at module scope, so it can't run
@@ -333,6 +339,54 @@ module.exports = async (req, res) => {
   }
 
   const db = admin.firestore();
+
+  // Run log: one document per invocation in emailReminderRuns, readable in
+  // the Firebase Console (Firestore Database -> emailReminderRuns; doc ids
+  // are the start timestamp, so they sort chronologically). Vercel's Hobby
+  // plan keeps runtime logs for only about an hour and shows no cron history,
+  // so this is the durable record of what each run looked at and what it did
+  // with it. `considered` lists every unpaid installment inside the -1..3 day
+  // window with its outcome; an empty list on a day you expected a reminder
+  // means the installment wasn't in the window (date/paid flag), not that the
+  // email failed. A run that crashes before finishing still writes its
+  // document, with `error` filled in.
+  const startedAt = new Date();
+  const runRef = db.collection("emailReminderRuns").doc(startedAt.toISOString().replace(/[:.]/g, "-"));
+  const run = {
+    startedAt: startedAt.toISOString(),
+    finishedAt: null,
+    durationMs: null,
+    // Vercel's cron trigger identifies itself with this User-Agent; anything
+    // else (e.g. a curl with the secret) shows up as "manual".
+    trigger: /vercel-cron/i.test(req.headers["user-agent"] || "") ? "cron" : "manual",
+    clientsScanned: 0,
+    sent: 0, skipped: 0, failed: 0,
+    considered: [],
+    error: null
+  };
+  const finishRun = async (status, body) => {
+    run.finishedAt = new Date().toISOString();
+    run.durationMs = Date.now() - startedAt.getTime();
+    try {
+      await runRef.set(run);
+    } catch (err) {
+      console.error("Falha ao gravar o registo da execução em emailReminderRuns", err);
+    }
+    res.status(status).json(body);
+  };
+
+  let sent = 0, skipped = 0, failed = 0;
+  let clientsSnap;
+  try {
+    clientsSnap = await db.collection("clients").get();
+  } catch (err) {
+    run.error = `Firestore clients read failed: ${err && err.message ? err.message : String(err)}`;
+    console.error(run.error, err);
+    await finishRun(500, { error: run.error });
+    return;
+  }
+  run.clientsScanned = clientsSnap.size;
+
   const transporter = nodemailer.createTransport({
     host: "smtp-relay.brevo.com",
     port: 587,
@@ -340,9 +394,7 @@ module.exports = async (req, res) => {
     auth: { user: process.env.BREVO_SMTP_USER, pass: process.env.BREVO_SMTP_KEY }
   });
 
-  const clientsSnap = await db.collection("clients").get();
-  let sent = 0, skipped = 0, failed = 0;
-
+  try {
   for (const clientDoc of clientsSnap.docs) {
     const data = clientDoc.data();
     const clientEmail = data.email || "";
@@ -380,8 +432,18 @@ module.exports = async (req, res) => {
           ? `${clientDoc.id}:${projectId}:${i}`
           : `${clientDoc.id}:${projectId}:${i}:${phase}`;
         const reminderRef = db.collection("emailRemindersSent").doc(reminderKey);
+        const entry = {
+          clientId: clientDoc.id, to: clientEmail, projectId, idx: i,
+          dueDate: iso, due, phase, reminderKey, outcome: null, error: null
+        };
+        run.considered.push(entry);
         const already = await reminderRef.get();
-        if (already.exists) { skipped++; continue; }
+        if (already.exists) {
+          skipped++;
+          entry.outcome = "skipped";
+          entry.error = `already sent ${already.get("sentAt") || "(no sentAt)"}`;
+          continue;
+        }
 
         const parcelaNote = dates.length > 1 ? ` (parcela ${i + 1}/${dates.length})` : "";
         const amount = Number(amounts[i]) || 0;
@@ -415,14 +477,27 @@ module.exports = async (req, res) => {
             phase
           });
           sent++;
+          entry.outcome = "sent";
         } catch (err) {
           failed++;
+          entry.outcome = "failed";
+          // Nodemailer/SMTP errors carry the relay's reply (e.g. Brevo's
+          // "sender not verified"); keep it so the run doc explains itself.
+          entry.error = [err && err.message, err && err.response].filter(Boolean).join(" | ") || String(err);
           console.error(`Falha ao enviar lembrete para ${clientEmail} (cliente ${clientDoc.id}, projeto ${projectId}, parcela ${i})`, err);
         }
       }
     }
   }
+  } catch (err) {
+    run.sent = sent; run.skipped = skipped; run.failed = failed;
+    run.error = `Run aborted: ${err && err.message ? err.message : String(err)}`;
+    console.error(run.error, err);
+    await finishRun(500, { error: run.error, sent, skipped, failed });
+    return;
+  }
 
+  run.sent = sent; run.skipped = skipped; run.failed = failed;
   console.log(`sendPaymentReminders: ${sent} enviado(s), ${skipped} já enviado(s) antes, ${failed} falhado(s).`);
-  res.status(200).json({ sent, skipped, failed });
+  await finishRun(200, { sent, skipped, failed, run: runRef.id });
 };
