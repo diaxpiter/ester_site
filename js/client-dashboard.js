@@ -89,6 +89,9 @@ document.getElementById('testimonialSubmitBtn').addEventListener('click', async 
   const msgEl = document.getElementById('testimonialMsg');
   const text = document.getElementById('testimonialInput').value.trim();
   if(!text){ msg(msgEl, 'Escreva algo antes de enviar.', 'error'); return; }
+  // firestore.rules rejects testimonials over 2000 characters; say so plainly
+  // instead of the generic "try again", which would never succeed.
+  if(text.length > 2000){ msg(msgEl, `O depoimento tem ${text.length} caracteres. O máximo é 2000.`, 'error'); return; }
   if(!currentClientId) return;
   try{
     await updateDoc(doc(db, 'clients', currentClientId), {
