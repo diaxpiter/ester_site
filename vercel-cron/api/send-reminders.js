@@ -361,6 +361,10 @@ module.exports = async (req, res) => {
     trigger: /vercel-cron/i.test(req.headers["user-agent"] || "") ? "cron" : "manual",
     clientsScanned: 0,
     sent: 0, skipped: 0, failed: 0,
+    // Installments in the window whose client has no email on file: nothing
+    // is sent, but they're logged (outcome "no-email") so the admin's
+    // Lembretes view can flag them instead of them vanishing silently.
+    noEmail: 0,
     considered: [],
     error: null
   };
@@ -375,7 +379,7 @@ module.exports = async (req, res) => {
     res.status(status).json(body);
   };
 
-  let sent = 0, skipped = 0, failed = 0;
+  let sent = 0, skipped = 0, failed = 0, noEmail = 0;
   let clientsSnap;
   try {
     clientsSnap = await db.collection("clients").get();
@@ -398,8 +402,9 @@ module.exports = async (req, res) => {
   for (const clientDoc of clientsSnap.docs) {
     const data = clientDoc.data();
     const clientEmail = data.email || "";
-    if (!clientEmail || clientEmail === ADMIN_EMAIL || clientEmail === SENDER_EMAIL) continue;
+    if (clientEmail === ADMIN_EMAIL || clientEmail === SENDER_EMAIL) continue;
     const clientFirstName = data.firstName || "";
+    const clientName = `${data.firstName || ""} ${data.lastName || ""}`.trim() || data.company || clientEmail || "Cliente";
 
     for (const p of getProjects(data)) {
       if (PONTUAL_PACK_IDS.has(p.pack)) continue; // one-off/avulso work — never auto-reminded
@@ -432,11 +437,26 @@ module.exports = async (req, res) => {
           ? `${clientDoc.id}:${projectId}:${i}`
           : `${clientDoc.id}:${projectId}:${i}:${phase}`;
         const reminderRef = db.collection("emailRemindersSent").doc(reminderKey);
+        const parcelaNote = dates.length > 1 ? ` (parcela ${i + 1}/${dates.length})` : "";
+        const amount = Number(amounts[i]) || 0;
+        const subject = phase === "overdue"
+          ? "Pagamento em atraso — multa de 5% aplicada"
+          : `Lembrete: pagamento ${dueText(due)}`;
+        // clientName/projectName/amount/subject make each entry readable on
+        // its own in the Lembretes view, even after the client is edited or
+        // deleted.
         const entry = {
-          clientId: clientDoc.id, to: clientEmail, projectId, idx: i,
+          clientId: clientDoc.id, clientName, to: clientEmail, projectId, projectName,
+          idx: i, count: dates.length, amount, subject,
           dueDate: iso, due, phase, reminderKey, outcome: null, error: null
         };
         run.considered.push(entry);
+        if (!clientEmail) {
+          noEmail++;
+          entry.outcome = "no-email";
+          entry.error = "cliente sem email na ficha";
+          continue;
+        }
         const already = await reminderRef.get();
         if (already.exists) {
           skipped++;
@@ -445,11 +465,6 @@ module.exports = async (req, res) => {
           continue;
         }
 
-        const parcelaNote = dates.length > 1 ? ` (parcela ${i + 1}/${dates.length})` : "";
-        const amount = Number(amounts[i]) || 0;
-        const subject = phase === "overdue"
-          ? "Pagamento em atraso — multa de 5% aplicada"
-          : `Lembrete: pagamento ${dueText(due)}`;
         const html = phase === "overdue"
           ? overdueEmailHtml({ clientFirstName, projectName, parcelaNote, amount, iso, daysLate: -due })
           : reminderEmailHtml({ clientFirstName, projectName, parcelaNote, amount, iso, due });
@@ -490,14 +505,14 @@ module.exports = async (req, res) => {
     }
   }
   } catch (err) {
-    run.sent = sent; run.skipped = skipped; run.failed = failed;
+    run.sent = sent; run.skipped = skipped; run.failed = failed; run.noEmail = noEmail;
     run.error = `Run aborted: ${err && err.message ? err.message : String(err)}`;
     console.error(run.error, err);
     await finishRun(500, { error: run.error, sent, skipped, failed });
     return;
   }
 
-  run.sent = sent; run.skipped = skipped; run.failed = failed;
+  run.sent = sent; run.skipped = skipped; run.failed = failed; run.noEmail = noEmail;
   console.log(`sendPaymentReminders: ${sent} enviado(s), ${skipped} já enviado(s) antes, ${failed} falhado(s).`);
   await finishRun(200, { sent, skipped, failed, run: runRef.id });
 };

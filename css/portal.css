@@ -441,7 +441,7 @@
 
   /* admin: sub-nav tab pair (Clientes/Leads, Financeiro/A receber) — groups
      a secondary view behind its parent's top-level nav entry. */
-  .subnav-tabs{display:flex;gap:8px;margin:-4px 0 24px;}
+  .subnav-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:-4px 0 24px;}
   .subnav-tab{
     background:transparent;border:1px solid var(--line);color:var(--gray);
     font-family:'Inter',sans-serif;font-size:13px;letter-spacing:0.04em;
@@ -839,4 +839,80 @@
     .central-grid{grid-template-columns:1fr;}
     .central-edit{grid-template-columns:1fr;}
     .central-tree{font-size:11px;padding:14px;}
+  }
+
+  /* ---------- admin: Lembretes (js/admin-reminders.js) ----------
+     Amber/red/green are the same literals the rest of the portal uses for
+     "vence hoje" / "em atraso" / paid, so the chips read the same everywhere. */
+  .rem-health{
+    display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px 28px;align-items:center;
+    border:1px solid var(--line);border-left:3px solid var(--gray);padding:18px 20px;margin-bottom:30px;
+    background:rgba(var(--off-white-rgb),0.03);
+  }
+  .rem-health.is-ok{border-left-color:var(--green);}
+  .rem-health.is-warn{border-left-color:#f0a24b;}
+  .rem-health.is-bad{border-left-color:var(--red);}
+  .rem-health-main{display:flex;align-items:center;gap:14px;}
+  .rem-dot{width:12px;height:12px;border-radius:50%;background:var(--gray);flex:none;}
+  .rem-health.is-ok .rem-dot{background:var(--green);box-shadow:0 0 0 5px rgba(95,191,122,0.15);}
+  .rem-health.is-warn .rem-dot{background:#f0a24b;box-shadow:0 0 0 5px rgba(240,162,75,0.15);}
+  .rem-health.is-bad .rem-dot{background:var(--red);box-shadow:0 0 0 5px rgba(229,87,63,0.18);}
+  .rem-health-title{font-family:'League Spartan',sans-serif;font-size:19px;line-height:1.25;}
+  .rem-health-sub{color:var(--gray);font-size:13px;font-variant-numeric:tabular-nums;word-break:break-word;}
+  .rem-streak{justify-self:end;text-align:right;}
+  .rem-streak-label{font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gray);margin-bottom:6px;}
+  .rem-bars{display:flex;gap:4px;justify-content:flex-end;}
+  .rem-bar{display:block;width:12px;height:22px;border-radius:2px;background:var(--green);opacity:0.85;}
+  .rem-bar.is-warn{background:#f0a24b;}
+  .rem-bar.is-miss{background:transparent;border:1px dashed var(--red);}
+  .rem-bar.is-none,.rem-bar.is-pending{background:transparent;border:1px solid var(--line);}
+  .rem-bar.is-today{outline:1px solid var(--off-white);outline-offset:2px;}
+
+  .rem-days{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;}
+  .rem-day-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:12px;}
+  .rem-day-head h3{font-size:22px;font-style:italic;font-weight:400;}
+  .rem-tag{font-family:'Inter',sans-serif;font-style:normal;font-size:12px;color:var(--gray);margin-left:6px;}
+  .rem-day-date{color:var(--gray);font-size:12px;white-space:nowrap;}
+  .rem-day-count{font-size:12px;color:var(--gray);margin:-4px 0 12px;font-variant-numeric:tabular-nums;}
+  .rem-empty{color:var(--gray);font-size:13px;border:1px dashed var(--line);padding:16px;text-align:center;}
+
+  .rem-row{border:1px solid var(--line);padding:13px 14px;margin-bottom:10px;cursor:pointer;}
+  .rem-row:hover{border-color:rgba(var(--off-white-rgb),0.34);}
+  .rem-row:focus-visible{outline:2px solid #f0a24b;outline-offset:2px;}
+  .rem-row.is-fail{border-color:rgba(229,87,63,0.55);background:rgba(229,87,63,0.06);}
+  .rem-row.is-gap{border-style:dashed;}
+  .rem-row.is-muted{opacity:0.7;}
+  .rem-row-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;}
+  .rem-who{font-weight:600;}
+  .rem-amt{font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .rem-what{color:var(--gray);font-size:13px;margin:2px 0 9px;}
+  .rem-chips{display:flex;gap:6px;flex-wrap:wrap;}
+  .rem-chip{font-size:11px;letter-spacing:0.03em;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--off-white);white-space:nowrap;}
+  .rem-chip.is-today{color:#f0a24b;border-color:#f0a24b;}
+  .rem-chip.is-late{color:var(--red);border-color:var(--red);}
+  .rem-chip.is-sent{color:var(--green);border-color:var(--green);}
+  .rem-chip.is-fail{background:var(--red);border-color:var(--red);color:#fff;}
+  .rem-chip.is-plan{border-style:dashed;}
+  .rem-chip.is-muted{color:var(--gray);}
+  .rem-detail{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;cursor:default;}
+  .rem-row[aria-expanded="true"] .rem-detail{display:block;}
+  .rem-detail dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;}
+  .rem-detail dt{color:var(--gray);}
+  .rem-detail dd{word-break:break-word;}
+  .rem-err{color:var(--red);}
+  .rem-note{color:var(--gray);margin-top:8px;}
+  .rem-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .rem-actions .btn{padding:9px 14px;font-size:12px;text-decoration:none;}
+
+  .rem-week{margin-top:30px;border-top:1px solid var(--line);padding-top:20px;}
+  .rem-week h3{font-size:18px;margin-bottom:6px;}
+  .rem-week p{color:var(--gray);font-size:13px;max-width:640px;line-height:1.6;}
+  .rem-week strong{color:var(--off-white);font-weight:600;}
+  .rem-foot{margin-top:10px;font-style:italic;}
+
+  @media (max-width:860px){.rem-days{grid-template-columns:1fr;}}
+  @media (max-width:640px){
+    .rem-health{grid-template-columns:1fr;}
+    .rem-streak{justify-self:start;text-align:left;}
+    .rem-bars{justify-content:flex-start;}
   }

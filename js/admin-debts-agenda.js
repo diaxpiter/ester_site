@@ -26,6 +26,7 @@ export async function fetchAllInstallments(){
       dates.forEach((iso, i) => {
         if(!iso) return; // only dated instalments
         rows.push({
+          clientId: d.id, projectId: p.id || 'legacy', email: data.email || '',
           clientName, firstName: data.firstName || '', phone: data.phone || '',
           project: p.name || 'Projeto', idx: i, count: dates.length, note: notes[i] || '',
           iso, amount: Number(amounts[i]) || 0, paid: !!paid[i], pontual: isPontualWorkflow(p)
@@ -50,7 +51,7 @@ function lateFine(amount){
   return amount * 0.05;
 }
 // Pre-filled WhatsApp reminder link for one instalment (null if the client has no phone).
-function waReminderHref(r){
+export function waReminderHref(r){
   let phone = (r.phone || '').replace(/[^\d]/g, '');
   if(phone.length === 9) phone = '351' + phone; // assume PT if no country code
   if(!phone) return null;

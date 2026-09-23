@@ -16,6 +16,7 @@ import { loadDebts } from './admin-debts-agenda.js';
 import { loadClientDashboard } from './client-dashboard.js';
 import { loadDashboard } from './admin-dashboard.js';
 import { loadCentral } from './admin-central.js';
+import { loadReminders } from './admin-reminders.js';
 
 // ============================================================
 //  LIGHT/DARK THEME toggle click
@@ -36,6 +37,7 @@ function routeAdmin(){
   const h = (location.hash || '').replace('#', '');
   if(h === 'financeiro') loadFinance();
   else if(h === 'a-receber') loadDebts();
+  else if(h === 'lembretes') loadReminders();
   else if(h === 'leads') loadLeads();
   else if(h === 'painel') loadDashboard();
   else if(h === 'central') loadCentral();
@@ -53,6 +55,7 @@ function routeAdmin(){
 // ============================================================
 function setSubnavActive(hash){
   const key = hash === 'leads' ? 'leads' : hash === 'a-receber' ? 'a-receber'
+    : hash === 'lembretes' ? 'lembretes'
     : hash === 'financeiro' ? 'financeiro' : hash === 'clientes' ? 'clientes' : '';
   if(!key) return;
   document.querySelectorAll('.subnav-tab').forEach(b => b.classList.toggle('is-active', b.dataset.subnav === key));
@@ -65,6 +68,7 @@ document.addEventListener('click', (e) => {
   else if(target === 'leads') loadLeads();
   else if(target === 'financeiro') loadFinance();
   else if(target === 'a-receber') loadDebts();
+  else if(target === 'lembretes') loadReminders();
   setSubnavActive(target);
 });
 

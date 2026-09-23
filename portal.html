@@ -586,6 +586,7 @@
     <div class="subnav-tabs">
       <button type="button" class="subnav-tab" data-subnav-group="financeiro" data-subnav="financeiro">Financeiro</button>
       <button type="button" class="subnav-tab is-active" data-subnav-group="financeiro" data-subnav="a-receber">A receber</button>
+      <button type="button" class="subnav-tab" data-subnav-group="financeiro" data-subnav="lembretes">Lembretes</button>
     </div>
 
     <div class="section-divider" style="margin-top:0;">
@@ -602,6 +603,24 @@
     <div id="debtsList"></div>
   </section>
 
+  <!-- ===================== ADMIN: LEMBRETES (EMAIL REMINDERS) VIEW ===================== -->
+  <!-- What the payment-reminder cron sent yesterday and today, and what it will
+       send tomorrow. Past days come from emailReminderRuns (the cron's run log),
+       tomorrow is forecast in js/admin-reminders.js with the cron's own rules. -->
+  <section id="view-admin-reminders" class="hidden">
+    <div class="eyebrow">Admin</div>
+    <h1 class="page-title">Lembretes.</h1>
+    <div class="subnav-tabs">
+      <button type="button" class="subnav-tab" data-subnav-group="financeiro" data-subnav="financeiro">Financeiro</button>
+      <button type="button" class="subnav-tab" data-subnav-group="financeiro" data-subnav="a-receber">A receber</button>
+      <button type="button" class="subnav-tab is-active" data-subnav-group="financeiro" data-subnav="lembretes">Lembretes</button>
+    </div>
+
+    <div class="rem-health" id="remHealth"><span class="loading-dot"></span></div>
+    <div class="rem-days" id="remDays"></div>
+    <div class="rem-week" id="remWeek"></div>
+  </section>
+
   <!-- ===================== ADMIN FINANCE VIEW ===================== -->
   <section id="view-admin-finance" class="hidden">
     <div class="eyebrow">Admin</div>
@@ -609,6 +628,7 @@
     <div class="subnav-tabs">
       <button type="button" class="subnav-tab is-active" data-subnav-group="financeiro" data-subnav="financeiro">Financeiro</button>
       <button type="button" class="subnav-tab" data-subnav-group="financeiro" data-subnav="a-receber">A receber</button>
+      <button type="button" class="subnav-tab" data-subnav-group="financeiro" data-subnav="lembretes">Lembretes</button>
     </div>
 
     <!-- Register / edit income -->
