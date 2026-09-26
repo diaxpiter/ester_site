@@ -221,42 +221,24 @@
   </section>
 
   <!-- ===================== ADMIN CENTRAL VIEW ===================== -->
-  <!-- The day-to-day cheat sheet: links, data to copy, the drive's folder map
-       and the money routine. Editable bits live in Firestore (dashboard/central,
-       admin-only) and are rendered by js/admin-central.js. -->
+  <!-- Two tabs: Copiar (data to copy mid-conversation + ready messages, stored
+       in Firestore dashboard/central, rendered by js/admin-central.js) and
+       Notas (iPhone-Notes-style notes with headings and checkboxes, one
+       Firestore doc per note in `notes`, rendered by js/admin-notes.js). -->
   <section id="view-admin-central" class="hidden">
     <div class="eyebrow">Admin</div>
     <h1 class="page-title">Central.</h1>
-    <p class="lede">O que se procura a meio de uma conversa com um cliente — links, dados para copiar, onde vive cada ficheiro e a rotina do dinheiro.</p>
 
     <div class="subnav-tabs central-tabs">
-      <button type="button" class="subnav-tab is-active" data-central-tab="atalhos">Atalhos</button>
-      <button type="button" class="subnav-tab" data-central-tab="dados">Copiar</button>
-      <button type="button" class="subnav-tab" data-central-tab="pastas">Pastas</button>
-      <button type="button" class="subnav-tab" data-central-tab="rotina">Rotina</button>
-    </div>
-
-    <!-- ---------- ATALHOS ---------- -->
-    <div class="central-panel" data-central-panel="atalhos">
-      <div class="client-toolbar">
-        <button type="button" class="btn btn-ghost" id="centralEditBtn">Editar links e dados</button>
-      </div>
-      <div class="section-divider" style="margin-top:0;">
-        <h3>Trabalho do dia</h3>
-        <div id="centralLinks-dia" class="central-grid"></div>
-      </div>
-      <div class="section-divider">
-        <h3>Dinheiro</h3>
-        <div id="centralLinks-dinheiro" class="central-grid"></div>
-      </div>
-      <div class="section-divider">
-        <h3>Mostrar ao cliente</h3>
-        <div id="centralLinks-cliente" class="central-grid"></div>
-      </div>
+      <button type="button" class="subnav-tab is-active" data-central-tab="dados">Copiar</button>
+      <button type="button" class="subnav-tab" data-central-tab="notas">Notas</button>
     </div>
 
     <!-- ---------- COPIAR ---------- -->
-    <div class="central-panel hidden" data-central-panel="dados">
+    <div class="central-panel" data-central-panel="dados">
+      <div class="client-toolbar">
+        <button type="button" class="btn btn-ghost" id="centralEditBtn">Editar dados</button>
+      </div>
       <div class="section-divider" style="margin-top:0;">
         <h3>Dados para copiar</h3>
         <p class="lede central-hide-on-edit" style="margin-bottom:20px;">Toque na linha e o valor fica na área de transferência.</p>
@@ -268,97 +250,30 @@
       </div>
     </div>
 
-    <!-- ---------- PASTAS ---------- -->
-    <div class="central-panel hidden" data-central-panel="pastas">
-      <div class="section-divider" style="margin-top:0;">
-        <h3>O drive</h3>
-        <p class="lede" style="margin-bottom:20px;">Duas pastas novas ao lado das que já existem. Quanto menos sítios onde um ficheiro pode estar, mais depressa se encontra.</p>
-        <pre class="central-tree">ESTER (drive da empresa)
-├── 00_DOC                  documentos soltos, contratos, seguros
-├── 01_CLIENTES             uma pasta por cliente, partilhada com ele
-│   └── Nome do Cliente/
-│       ├── Bruto/          o que sai da câmara
-│       ├── Entregas/       o que o cliente vê
-│       └── Admin/          orçamento, contrato, briefing
-├── <b>02_FINANCEIRO</b>
-│   ├── <b>00_PAINEL</b>          atalho para a folha ESTER_Financeiro
-│   ├── <b>01_ENTRADAS</b>        recibos emitidos → 2026/09_Setembro/
-│   ├── <b>02_SAIDAS</b>          faturas e talões de despesa → 2026/09_Setembro/
-│   ├── <b>03_FISCAL</b>          IRS, Segurança Social, contabilista
-│   └── <b>04_EQUIPAMENTO</b>     faturas de compra, garantias, seguros
-└── <b>03_TEMPLATES</b>
-    ├── orçamento, email, contrato
-    └── tabela de preços</pre>
-      </div>
-
-      <div class="section-divider">
-        <h3>Nome dos ficheiros</h3>
-        <p class="lede" style="margin-bottom:20px;">Uma regra só. A data à frente ordena a pasta sozinha; o nome da entidade faz a pesquisa do Drive encontrar tudo de um fornecedor de uma vez.</p>
-        <div class="central-scroll">
-          <table class="central-table">
-            <tr><th>Onde</th><th>Formato</th><th>Exemplo</th></tr>
-            <tr><td>01_ENTRADAS</td><td><code>AAAA-MM-DD_REC_Cliente_valor</code></td><td><code>2026-09-04_REC_Gisele-Villar_450.pdf</code></td></tr>
-            <tr><td>02_SAIDAS</td><td><code>AAAA-MM-DD_DESP_Fornecedor_o-que-é_valor</code></td><td><code>2026-09-02_DESP_Amazon_lapela_89.pdf</code></td></tr>
-            <tr><td>04_EQUIPAMENTO</td><td><code>AAAA-MM-DD_EQP_Marca-modelo_valor</code></td><td><code>2026-06-11_EQP_Sony-ZVE10II_899.pdf</code></td></tr>
-            <tr><td>03_TEMPLATES</td><td><code>AAAA-MM-DD_ORC_Cliente_valor</code></td><td><code>2026-09-01_ORC_Studio-Rosa_600.pdf</code></td></tr>
-          </table>
+    <!-- ---------- NOTAS ---------- -->
+    <div class="central-panel hidden" data-central-panel="notas">
+      <div class="notes" id="notesRoot">
+        <aside class="notes-list-pane">
+          <div class="notes-list-head">
+            <input type="search" id="notesSearch" class="notes-search" placeholder="Pesquisar" aria-label="Pesquisar notas" autocomplete="off">
+            <button type="button" class="btn-mini" id="notesNewBtn">+ Nova nota</button>
+          </div>
+          <div id="notesList" class="notes-list"></div>
+        </aside>
+        <div class="notes-editor-pane" id="notesEditorPane">
+          <div class="notes-toolbar">
+            <button type="button" class="notes-back" id="notesBackBtn" aria-label="Voltar à lista">‹ Notas</button>
+            <button type="button" class="notes-tool" data-note-tool="h" title="Transformar a linha em título">Aa Título</button>
+            <button type="button" class="notes-tool" data-note-tool="c" title="Transformar a linha em caixa de seleção">☐ Caixa</button>
+            <span class="notes-toolbar-spacer"></span>
+            <button type="button" class="notes-tool" id="notesPinBtn">Fixar</button>
+            <button type="button" class="notes-tool notes-tool-danger" id="notesDeleteBtn">Apagar</button>
+          </div>
+          <div class="notes-meta" id="notesMeta"></div>
+          <div class="notes-title" id="notesTitle" contenteditable="plaintext-only" role="textbox" aria-label="Título da nota" data-placeholder="Título"></div>
+          <div class="notes-body" id="notesBody"></div>
+          <p class="panel-empty hidden" id="notesEmpty">Nenhuma nota ainda. Toque em "+ Nova nota".</p>
         </div>
-        <p class="central-note">O financeiro não repete pastas por cliente. O cliente vive em <code>01_CLIENTES</code>; no financeiro é só uma linha. Duplicar a árvore é o que mata estes sistemas ao terceiro mês.</p>
-      </div>
-
-      <div class="section-divider">
-        <h3>O que fica aqui e o que fica no drive</h3>
-        <div class="central-scroll">
-          <table class="central-table">
-            <tr><th>Coisa</th><th>Onde vive</th></tr>
-            <tr><td>Quanto entrou, de quem e quando</td><td>Aqui, em <b>Financeiro</b></td></tr>
-            <tr><td>Parcelas por receber e atrasos</td><td>Aqui, em <b>A receber</b></td></tr>
-            <tr><td>Segurança Social por trimestre</td><td>Aqui, em <b>Financeiro</b></td></tr>
-            <tr><td>Despesas, subscrições e lista de compras</td><td>Folha <b>ESTER_Financeiro</b>, no drive</td></tr>
-            <tr><td>PDFs de recibos, faturas e talões</td><td><b>02_FINANCEIRO</b>, no drive</td></tr>
-            <tr><td>Material dos clientes</td><td><b>01_CLIENTES</b>, no drive</td></tr>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ---------- ROTINA ---------- -->
-    <div class="central-panel hidden" data-central-panel="rotina">
-      <div class="section-divider" style="margin-top:0;">
-        <h3>Sexta, 15 minutos <span class="central-cycle" id="centralWeekLabel"></span></h3>
-        <p class="lede" style="margin-bottom:20px;">Marcado no calendário como se fosse um cliente. As caixas limpam-se sozinhas na segunda.</p>
-        <div id="centralSemanal"></div>
-      </div>
-
-      <div class="section-divider">
-        <h3>Dia 1 do mês, 30 minutos <span class="central-cycle" id="centralMonthLabel"></span></h3>
-        <div id="centralMensal"></div>
-      </div>
-
-      <div class="section-divider">
-        <h3>A regra dos três bolsos</h3>
-        <p class="lede" style="margin-bottom:20px;">Cada valor parte-se em três no momento em que entra, não no fim do mês.</p>
-        <div class="central-scroll">
-          <table class="central-table">
-            <tr><th>Bolso</th><th>Quanto</th><th>Para onde vai</th></tr>
-            <tr><td>Impostos e Segurança Social</td><td class="num">30%</td><td>Poupança separada, nunca se toca</td></tr>
-            <tr><td>Reserva e equipamento</td><td class="num">10%</td><td>A mesma poupança, subconta diferente</td></tr>
-            <tr><td>Livre</td><td class="num">60%</td><td>Conta do dia a dia</td></tr>
-          </table>
-        </div>
-        <p class="central-note">Os 30% são uma regra de bolso para recibos verdes isentos pelo artigo 53.º, não um cálculo do caso concreto — a Segurança Social tem período de isenção inicial e o IRS depende do resto do agregado. O número certo confirma-se com contabilista. O cálculo trimestral real está em <b>Financeiro</b>.</p>
-      </div>
-
-      <div class="section-divider">
-        <h3>Antes de comprar seja o que for</h3>
-        <ol class="central-questions">
-          <li>Está na lista de desejos há sete dias ou mais?</li>
-          <li>O bolso dos impostos está cheio até hoje?</li>
-          <li>Destrava trabalho já pedido, ou é para um cliente que ainda não existe?</li>
-          <li>Alugar por um dia resolve o mesmo?</li>
-          <li>Se sim a tudo: comprar, guardar a fatura em 04_EQUIPAMENTO e lançar na folha no mesmo dia.</li>
-        </ol>
-        <p class="central-note">O que ainda apetecer ao oitavo dia é quase sempre uma boa compra.</p>
       </div>
     </div>
   </section>

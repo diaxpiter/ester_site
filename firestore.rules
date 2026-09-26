@@ -68,6 +68,11 @@ service cloud.firestore {
       allow read: if isAdmin();
     }
 
+    match /notes/{noteId} {
+      // Ester's own notes (Central -> Notas, js/admin-notes.js). Private.
+      allow read, write: if isAdmin();
+    }
+
     match /dashboard/{docId} {
       // Admin-only scratch space for the Início page: the daily routine and
       // to-do checklists. No client-facing use, so fully private to the admin.
