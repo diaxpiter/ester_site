@@ -477,8 +477,18 @@
     text-align:right;
   }
   .section-tagline{
+    max-width:560px;
     margin-top:14px;
     font-size:14px;
+    color:var(--gray);
+    line-height:1.6;
+  }
+  /* authorship line under a tagline (Produção Autoral) */
+  .section-credit{
+    max-width:560px;
+    margin-top:6px;
+    font-size:14px;
+    font-style:italic;
     color:var(--gray);
     line-height:1.6;
   }
