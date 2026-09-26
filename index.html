@@ -546,6 +546,8 @@
       "about.stat3": "Years Shooting",
       "showreel.title": "Original Production",
       "showreel.tagline": "Stories built from a point of view, an idea and a language of their own.",
+      "showreel.v1": "Art as a way of feeling",
+      "showreel.v2": "Movement is a language too",
       "showreel.credit": "Concept, script, direction, filming and editing by Ester.",
       "showreel.cta": "Watch the full film",
       "contact.eyebrow": "Get in touch",
@@ -600,6 +602,8 @@
       "about.stat3": "Anos de Experiência",
       "showreel.title": "Produção Autoral",
       "showreel.tagline": "Histórias construídas a partir de um olhar, uma ideia e uma linguagem própria.",
+      "showreel.v1": "A arte como forma de sentir",
+      "showreel.v2": "Movimento também é linguagem",
       "showreel.credit": "Conceito, roteiro, direção, captação e edição por Ester.",
       "showreel.cta": "Ver vídeo completo",
       "contact.eyebrow": "Entre em contato",
@@ -813,8 +817,9 @@
   // full film, which only downloads once someone clicks. Order here is the
   // order on the page.
   const SHOWREELS = [
-    { title:'Arte · Amanda Reis', poster:'images/capa_autoral.jpg',    preview:'videos/amanda-reis-preview.mp4?v=1', full:'videos/amanda-reis.mp4?v=1' },
-    { title:'Ana Rita',           poster:'images/showreel-poster.jpg', preview:'videos/ana-rita-preview.mp4?v=1',    full:'videos/ana-rita.mp4?v=1' }
+    // `tag` is a translations key (the phrase shown above the name).
+    { tag:'showreel.v1', title:'Arte • Amanda Reis', poster:'images/capa_autoral.jpg',    preview:'videos/amanda-reis-preview.mp4?v=1', full:'videos/amanda-reis.mp4?v=1' },
+    { tag:'showreel.v2', title:'Pilates • Ana Rita', poster:'images/showreel-poster.jpg', preview:'videos/ana-rita-preview.mp4?v=1',    full:'videos/ana-rita.mp4?v=1' }
   ];
   (function showreel(){
     const stage = document.getElementById('showreelStage');
@@ -849,7 +854,9 @@
     }
 
     picks.innerHTML = SHOWREELS.map((r, i) =>
-      '<button type="button" class="showreel-pick" aria-pressed="' + (i === 0) + '"><img src="' + r.poster + '" alt="" loading="lazy" decoding="async"><span>' + r.title + '</span></button>'
+      '<button type="button" class="showreel-pick" aria-pressed="' + (i === 0) + '"><img src="' + r.poster + '" alt="" loading="lazy" decoding="async">' +
+        '<span class="showreel-pick-text"><span class="showreel-pick-tag" data-i18n="' + r.tag + '">' + translations[currentLang][r.tag] + '</span>' +
+        '<span class="showreel-pick-name">' + r.title + '</span></span></button>'
     ).join('');
     picks.querySelectorAll('button').forEach((b, i) => b.addEventListener('click', () => showPreview(i)));
     cta.addEventListener('click', playFull);
