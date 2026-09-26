@@ -6,8 +6,14 @@
 //  "Guardar" button.
 //
 //  One Firestore doc per note in `notes` (admin-only in firestore.rules):
-//    { title, blocks: [{ t: 'p'|'h'|'c', text, done }], pinned,
+//    { title, blocks: [{ t: 'p'|'h'|'c', html, text, done }], pinned,
 //      createdAt, updatedAt }   (dates are ISO strings)
+//  `html` holds the line with its formatting — only <b>, <i>, <u> and <br>
+//  survive cleanInline(); `text` is the same line as plain text, used for
+//  search, previews and link detection. Notes saved before formatting
+//  existed only have `text`; normalize() turns it into `html`.
+//
+//  Bold / italic / underline: toolbar buttons, or Ctrl/Cmd+B / I / U.
 //
 //  Keyboard follows the iPhone: Enter on a checkbox line starts another
 //  checkbox, Enter on an empty checkbox line turns it back into text, and
@@ -55,9 +61,63 @@ const LINK_GROUPS = [
     ['maps', 'Perfil no Google', ''], ['port', 'Portfólio', '']
   ]]
 ];
-const P = text => ({ t: 'p', text, done: false });
-const H = text => ({ t: 'h', text, done: false });
-const C = text => ({ t: 'c', text, done: false });
+const P = text => ({ t: 'p', html: escapeHtml(text), text, done: false });
+const H = text => ({ t: 'h', html: escapeHtml(text), text, done: false });
+const C = text => ({ t: 'c', html: escapeHtml(text), text, done: false });
+
+// ---------- inline formatting ----------
+// Rebuilds a line's HTML from scratch, keeping only text, <br> and bold /
+// italic / underline — whatever form the browser used for them (<strong>,
+// <em>, or a <span style>). Everything else is unwrapped to its text, and no
+// attribute survives, so nothing pasted or stored can carry markup through.
+const INLINE_TAGS = { B: 'b', STRONG: 'b', I: 'i', EM: 'i', U: 'u' };
+function cleanInline(html){
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html || '';
+  const out = document.createElement('div');
+  const walk = (src, dst) => {
+    src.childNodes.forEach(node => {
+      if(node.nodeType === Node.TEXT_NODE){ dst.appendChild(document.createTextNode(node.nodeValue)); return; }
+      if(node.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = node.tagName;
+      if(tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEMPLATE') return;
+      if(tag === 'BR'){ dst.appendChild(document.createElement('br')); return; }
+      let target = dst;
+      const wrap = name => { const e = document.createElement(name); target.appendChild(e); target = e; };
+      if(INLINE_TAGS[tag]) wrap(INLINE_TAGS[tag]);
+      else{
+        if(tag === 'DIV' || tag === 'P'){ if(dst.childNodes.length) dst.appendChild(document.createElement('br')); }
+        const style = node.getAttribute('style') || '';
+        if(/font-weight:\s*(bold|[6-9]00)/i.test(style)) wrap('b');
+        if(/font-style:\s*italic/i.test(style)) wrap('i');
+        if(/text-decoration[^;]*underline/i.test(style)) wrap('u');
+      }
+      walk(node, target);
+    });
+  };
+  walk(tpl.content, out);
+  out.querySelectorAll('b, i, u').forEach(e => { if(!e.textContent) e.remove(); });
+  return out.innerHTML.replace(/(<br>)+$/, '');
+}
+function htmlToText(html){
+  const d = document.createElement('div');
+  d.innerHTML = (html || '').replace(/<br>/g, ' ');
+  return d.textContent;
+}
+// The line's HTML split at the caret: [before, after].
+function splitAtCaret(node){
+  const sel = window.getSelection();
+  if(!sel.rangeCount || !node.contains(sel.anchorNode)) return [node.innerHTML, ''];
+  const r = sel.getRangeAt(0);
+  if(!r.collapsed) r.deleteContents();
+  const tail = document.createRange();
+  tail.selectNodeContents(node);
+  tail.setStart(r.startContainer, r.startOffset);
+  const holder = document.createElement('div');
+  holder.appendChild(tail.extractContents());
+  return [cleanInline(node.innerHTML), cleanInline(holder.innerHTML)];
+}
+const withHtml = (b, html) => ({ ...b, html, text: htmlToText(html) });
 
 function starterNotes(links){
   const linkBlocks = [P('Os atalhos que estavam na Central. Toque em ↗ para abrir.')];
@@ -142,7 +202,10 @@ function normalize(n){
   return {
     id: n.id, title: n.title || '', pinned: !!n.pinned,
     createdAt: n.createdAt || nowIso(), updatedAt: n.updatedAt || n.createdAt || nowIso(),
-    blocks: blocks.map(b => ({ t: ['p', 'h', 'c'].includes(b.t) ? b.t : 'p', text: String(b.text || ''), done: !!b.done }))
+    blocks: blocks.map(b => {
+      const html = typeof b.html === 'string' ? cleanInline(b.html) : escapeHtml(String(b.text || ''));
+      return { t: ['p', 'h', 'c'].includes(b.t) ? b.t : 'p', html, text: htmlToText(html), done: !!b.done };
+    })
   };
 }
 function scheduleSave(){
@@ -160,6 +223,10 @@ async function flushSave(){
   dirtyId = null;
   if(!n) return;
   const { id, ...rest } = n;
+  rest.blocks = n.blocks.map(b => {
+    const html = cleanInline(b.html);
+    return { t: b.t, html, text: htmlToText(html), done: !!b.done };
+  });
   try{
     await setDoc(doc(NOTES, id), rest);
   }catch(err){
@@ -255,7 +322,7 @@ function renderEditor(focus){
       ? `<button type="button" class="nb-check" data-check="${i}" role="checkbox" aria-checked="${b.done}" aria-label="Marcar como feito">${b.done ? '✓' : ''}</button>`
       : '';
     const open = url ? `<a class="nb-open" href="${escapeHtml(url)}" target="_blank" rel="noopener" aria-label="Abrir link">↗</a>` : '';
-    return `<div class="nb nb-${b.t}${b.done ? ' is-done' : ''}">${check}<div class="nb-text" data-i="${i}" contenteditable="plaintext-only" role="textbox">${escapeHtml(b.text)}</div>${open}</div>`;
+    return `<div class="nb nb-${b.t}${b.done ? ' is-done' : ''}">${check}<div class="nb-text" data-i="${i}" contenteditable="true" role="textbox">${cleanInline(b.html)}</div>${open}</div>`;
   }).join('');
   if(focus){
     const node = focus.title ? title : blockText(focus.i);
@@ -289,30 +356,30 @@ function onBodyKeydown(e){
   const b = n.blocks[i];
   if(e.key === 'Enter' && !e.shiftKey && !e.isComposing){
     e.preventDefault();
-    const off = caretOffset(t);
-    const text = t.textContent;
     // Empty checkbox line + Enter = stop the list (iPhone behavior).
-    if(b.t === 'c' && !text.trim()){
+    if(b.t === 'c' && !t.textContent.trim()){
       const blocks = n.blocks.slice(); blocks[i] = P('');
       return setBlocks(n, blocks, { i, offset: 0 });
     }
+    // Split at the caret, formatting included on both halves.
+    const [before, after] = splitAtCaret(t);
     const blocks = n.blocks.slice();
-    blocks[i] = { ...b, text: text.slice(0, off) };
-    blocks.splice(i + 1, 0, { t: b.t === 'c' ? 'c' : 'p', text: text.slice(off), done: false });
+    blocks[i] = withHtml(b, before);
+    blocks.splice(i + 1, 0, withHtml({ t: b.t === 'c' ? 'c' : 'p', done: false }, after));
     return setBlocks(n, blocks, { i: i + 1, offset: 0 });
   }
   if(e.key === 'Backspace' && caretOffset(t) === 0 && !window.getSelection().toString()){
     if(b.t !== 'p'){
       e.preventDefault();
-      const blocks = n.blocks.slice(); blocks[i] = P(t.textContent);
+      const blocks = n.blocks.slice(); blocks[i] = withHtml({ t: 'p', done: false }, cleanInline(t.innerHTML));
       return setBlocks(n, blocks, { i, offset: 0 });
     }
     if(i > 0){
       e.preventDefault();
       const blocks = n.blocks.slice();
       const prev = blocks[i - 1];
-      const join = prev.text.length;
-      blocks[i - 1] = { ...prev, text: prev.text + t.textContent };
+      const join = htmlToText(prev.html).length;
+      blocks[i - 1] = withHtml(prev, cleanInline(prev.html + t.innerHTML));
       blocks.splice(i, 1);
       return setBlocks(n, blocks, { i: i - 1, offset: join });
     }
@@ -326,7 +393,7 @@ function applyTool(kind){
   const blocks = n.blocks.slice();
   if(focusIdx < 0 || focusIdx >= blocks.length){
     // Nothing focused: add a new line of that kind at the end.
-    blocks.push({ t: kind, text: '', done: false });
+    blocks.push({ t: kind, html: '', text: '', done: false });
     return setBlocks(n, blocks, { i: blocks.length - 1, offset: 0 });
   }
   const b = blocks[focusIdx];
@@ -381,11 +448,40 @@ function wire(){
     el('notesPinBtn').textContent = n.pinned ? 'Desafixar' : 'Fixar';
     renderList();
   });
-  // Toolbar buttons must not steal focus from the line being edited.
-  el('notesEditorPane').querySelectorAll('[data-note-tool]').forEach(b => {
+  // Toolbar buttons must not steal focus (or the selection) from the line
+  // being edited — pointerdown covers touch, mousedown older browsers.
+  el('notesEditorPane').querySelectorAll('[data-note-tool], [data-note-fmt]').forEach(b => {
+    b.addEventListener('pointerdown', e => e.preventDefault());
     b.addEventListener('mousedown', e => e.preventDefault());
+  });
+  el('notesEditorPane').querySelectorAll('[data-note-tool]').forEach(b => {
     b.addEventListener('click', () => applyTool(b.dataset.noteTool));
   });
+  // Bold / italic / underline on the selection (or on what's typed next).
+  // styleWithCSS off so browsers write <b>/<i>/<u>, not <span style>.
+  try{ document.execCommand('styleWithCSS', false, false); }catch(e){}
+  const fmtButtons = el('notesEditorPane').querySelectorAll('[data-note-fmt]');
+  fmtButtons.forEach(b => b.addEventListener('click', () => {
+    const sel = window.getSelection();
+    if(!sel.rangeCount || !sel.anchorNode || !sel.anchorNode.parentElement || !sel.anchorNode.parentElement.closest('#notesBody .nb-text')){
+      toast('Toque primeiro numa linha da nota');
+      return;
+    }
+    document.execCommand(b.dataset.noteFmt);
+    syncFmtButtons();
+  }));
+  // Light up B / I / U when the caret sits in formatted text.
+  const syncFmtButtons = () => {
+    const sel = window.getSelection();
+    const inBody = sel.rangeCount && sel.anchorNode && el('notesBody').contains(sel.anchorNode);
+    fmtButtons.forEach(b => {
+      let on = false;
+      if(inBody){ try{ on = document.queryCommandState(b.dataset.noteFmt); }catch(e){} }
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+  };
+  document.addEventListener('selectionchange', syncFmtButtons);
 
   const title = el('notesTitle');
   title.addEventListener('input', () => { const n = current(); if(!n) return; n.title = title.textContent; scheduleSave(); renderList(); });
@@ -405,7 +501,9 @@ function wire(){
     const t = e.target.closest('.nb-text');
     const n = current();
     if(!t || !n) return;
-    n.blocks[Number(t.dataset.i)].text = t.textContent;
+    const b = n.blocks[Number(t.dataset.i)];
+    b.html = t.innerHTML; // cleaned on save, not per keystroke (that would move the caret)
+    b.text = t.textContent;
     scheduleSave();
     renderList();
   });
