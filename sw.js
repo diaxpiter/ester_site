@@ -20,6 +20,7 @@ const SHELL = [
   'js/admin-central.js',
   'js/admin-notes.js',
   'js/admin-reminders.js',
+  'js/admin-email-editor.js',
   'js/app.js'
 ];
 

@@ -16,6 +16,7 @@ import { loadDebts } from './admin-debts-agenda.js';
 import { loadClientDashboard } from './client-dashboard.js';
 import { loadCentral } from './admin-central.js';
 import { loadReminders } from './admin-reminders.js';
+import { loadEmailEditor } from './admin-email-editor.js';
 
 // ============================================================
 //  LIGHT/DARK THEME toggle click
@@ -37,6 +38,7 @@ function routeAdmin(){
   if(h === 'financeiro') loadFinance();
   else if(h === 'a-receber') loadDebts();
   else if(h === 'lembretes') loadReminders();
+  else if(h === 'email') loadEmailEditor();
   else if(h === 'leads') loadLeads();
   else if(h === 'central') loadCentral();
   else if(h === 'notas') loadCentral('notas');

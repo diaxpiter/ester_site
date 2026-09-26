@@ -496,8 +496,109 @@
     </div>
 
     <div class="rem-health" id="remHealth"><span class="loading-dot"></span></div>
+    <div class="client-toolbar">
+      <button type="button" class="btn btn-ghost" id="remWriteEmailBtn">Escrever email</button>
+    </div>
     <div class="rem-days" id="remDays"></div>
     <div class="rem-week" id="remWeek"></div>
+  </section>
+
+  <!-- ===================== ADMIN: ESCREVER EMAIL ===================== -->
+  <!-- Manual payment email, in the same look as the automatic ones (see
+       vercel-cron/api/send-reminders.js). Every text is editable and the
+       beige box takes any extra lines (fine, interest, travel, discount).
+       Copied as HTML and pasted into Gmail. js/admin-email-editor.js. -->
+  <section id="view-admin-email" class="hidden">
+    <a href="#" class="back-link" id="emailBackLink">← Voltar a Lembretes</a>
+    <div class="eyebrow">Admin · Lembretes</div>
+    <h1 class="page-title">Escrever email.</h1>
+
+    <div class="mail-editor">
+      <div class="mail-form">
+        <div class="field">
+          <label for="mailPrefill">Preencher com um pagamento</label>
+          <select id="mailPrefill"><option value="">— Escrever do zero —</option></select>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="mailModel">Modelo</label>
+            <select id="mailModel">
+              <option value="adv">Aviso antes do vencimento</option>
+              <option value="today">Vence hoje</option>
+              <option value="late">Em atraso (com multa)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="mailTo">Para (email do cliente)</label>
+            <input type="email" id="mailTo" placeholder="cliente@email.com">
+          </div>
+        </div>
+
+        <details class="mail-data" open>
+          <summary>Dados do pagamento</summary>
+          <div class="field-row">
+            <div class="field"><label for="mailName">Nome do cliente</label><input type="text" id="mailName"></div>
+            <div class="field"><label for="mailProject">Projeto</label><input type="text" id="mailProject"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="mailParcela">Parcela (opcional)</label><input type="text" id="mailParcela" placeholder="parcela 1/3"></div>
+            <div class="field"><label for="mailAmount">Valor (€)</label><input type="number" id="mailAmount" min="0" step="0.01" inputmode="decimal"></div>
+          </div>
+          <div class="field">
+            <label for="mailDate">Vencimento</label>
+            <div class="date-field"><input type="text" id="mailDate" class="date-inp" inputmode="numeric" placeholder="dd/mm/aaaa" maxlength="10" autocomplete="off"><button type="button" class="date-cal" aria-label="Abrir calendário">📅</button></div>
+          </div>
+        </details>
+
+        <div class="mail-section-head">
+          <h3>Texto do email</h3>
+          <button type="button" class="btn-mini" id="mailResetBtn" title="Voltar ao texto do modelo, com os dados acima">Refazer texto</button>
+        </div>
+        <p class="mail-hint" id="mailEditedHint"></p>
+        <div class="field"><label for="mailSubject">Assunto</label><input type="text" id="mailSubject" data-mail-field="subject"></div>
+        <div class="field"><label for="mailPre">Texto que aparece na caixa de entrada</label><input type="text" id="mailPre" data-mail-field="pre"></div>
+        <div class="field"><label for="mailHello">Saudação</label><input type="text" id="mailHello" data-mail-field="hello"></div>
+        <div class="field">
+          <label>Parágrafos <span class="mail-hint-inline">— **texto** fica a negrito</span></label>
+          <div id="mailParas" class="mail-list"></div>
+          <button type="button" class="btn-mini" data-mail-add="paras">+ Parágrafo</button>
+        </div>
+
+        <div class="field">
+          <label>Caixa bege</label>
+          <div id="mailLines" class="mail-list"></div>
+          <div class="mail-presets">
+            <span>Acrescentar:</span>
+            <button type="button" class="btn-mini" data-mail-preset="multa">Multa 5%</button>
+            <button type="button" class="btn-mini" data-mail-preset="juros">Juros</button>
+            <button type="button" class="btn-mini" data-mail-preset="desloc">Deslocação</button>
+            <button type="button" class="btn-mini" data-mail-preset="desconto">Desconto</button>
+            <button type="button" class="btn-mini" data-mail-preset="texto">Linha de texto</button>
+          </div>
+          <div class="field mail-total-field" id="mailTotalField">
+            <label for="mailTotalLabel">Nome do total</label>
+            <input type="text" id="mailTotalLabel" data-mail-field="totalLabel">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Fecho</label>
+          <div id="mailOutro" class="mail-list"></div>
+          <button type="button" class="btn-mini" data-mail-add="outro">+ Parágrafo</button>
+        </div>
+      </div>
+
+      <div class="mail-preview-col">
+        <div class="mail-actions">
+          <button type="button" class="btn" id="mailCopyBtn">Copiar email</button>
+          <button type="button" class="btn btn-ghost" id="mailCopySubjectBtn">Copiar assunto</button>
+          <button type="button" class="btn btn-ghost" id="mailCopyToBtn">Copiar destinatário</button>
+        </div>
+        <p class="mail-hint">No Gmail: cole o destinatário e o assunto, clique no corpo da mensagem e cole com Ctrl+V (Mac: Cmd+V).</p>
+        <div class="mail-preview-meta"><span id="mailPreviewSubject"></span><span id="mailPreviewPre"></span></div>
+        <div class="mail-preview" id="mailPreview"></div>
+      </div>
+    </div>
   </section>
 
   <!-- ===================== ADMIN FINANCE VIEW ===================== -->
