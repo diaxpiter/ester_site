@@ -2,7 +2,7 @@
 // Goal: make the portal installable + fast, WITHOUT breaking Firebase.
 // Strategy: only touch same-origin GET requests. Firestore/Auth/Google Fonts
 // (cross-origin) pass straight through, untouched, so live data is never stale.
-const CACHE = 'ester-v28';
+const CACHE = 'ester-v29';
 const SHELL = [
   'portal.html',
   'index.html',
@@ -59,7 +59,7 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(req, { cache: 'reload' })
         .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; })
-        .catch(() => caches.match(req).then((r) => r || caches.match(url.pathname.indexOf('portal') !== -1 ? 'portal.html' : 'index.html')))
+        .catch(() => caches.match(req).then((r) => r || caches.match(/portal|\/notas/.test(url.pathname) ? 'portal.html' : 'index.html')))
     );
     return;
   }

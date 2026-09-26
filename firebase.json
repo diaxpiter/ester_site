@@ -19,6 +19,9 @@
     ],
     "cleanUrls": true,
     "trailingSlash": false,
+    "rewrites": [
+      { "source": "/notas", "destination": "/portal.html" }
+    ],
     "headers": [
       {
         "source": "**/*.@(js|css|jpg|jpeg|png|gif|webp|svg|mp4|webm|woff2)",

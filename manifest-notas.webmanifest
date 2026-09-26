@@ -3,7 +3,7 @@
   "name": "Ester — Notas",
   "short_name": "Notas",
   "description": "As notas da Ester, direto na Central.",
-  "start_url": "portal.html?abrir=notas",
+  "start_url": "notas",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

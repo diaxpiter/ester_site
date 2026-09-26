@@ -449,16 +449,23 @@ export function setAdminHash(h){
   syncInstallTarget(h);
 }
 
-// "Add to Home Screen" launches the manifest's start_url, not the page being
-// viewed (iOS 16.4+, Android). So while Notas is open the admin points at
-// manifest-notas.webmanifest (start_url portal.html?abrir=notas), and at the
-// regular admin manifest everywhere else. Swapping the <link> element, not
-// just its href, makes the browser fetch the new one. Admin only: the client
-// area deliberately has no manifest (see app.js).
+// esterprod.com/notas serves this same page (firebase.json rewrite) and opens
+// straight on Notas. It exists for the "Notas" home-screen shortcut: iOS
+// saves either the manifest's start_url or the current address WITHOUT its
+// #fragment, so portal#notas came out as plain /portal. A real path has no
+// fragment to lose.
+export const ON_NOTAS_PATH = /\/notas\/?$/.test(location.pathname);
+
+// Which manifest / home-screen icon the admin offers. On /notas (and, on
+// browsers that re-read it, while the Notas tab is open) it's
+// manifest-notas.webmanifest, whose start_url is also /notas; everywhere
+// else the regular admin manifest. Swapping the <link> element, not just its
+// href, makes the browser fetch the new one. Admin only: the client area
+// deliberately has no manifest (see app.js).
 export function syncInstallTarget(h){
   const old = document.querySelector('link[rel="manifest"]');
   if(!old) return;
-  const notes = h === 'notas';
+  const notes = ON_NOTAS_PATH || h === 'notas';
   const href = notes ? 'manifest-notas.webmanifest' : 'manifest.webmanifest';
   if(old.getAttribute('href') !== href){
     const m = document.createElement('link');

@@ -7,7 +7,7 @@ import {
   onAuthStateChanged, signOut, signInWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  auth, ADMIN_EMAIL, show, msg, toggleTheme, enhanceDateField, syncInstallTarget
+  auth, ADMIN_EMAIL, show, msg, toggleTheme, enhanceDateField, syncInstallTarget, ON_NOTAS_PATH
 } from './core.js';
 import { loadAdminList } from './admin-clients.js';
 import { loadLeads } from './admin-leads.js';
@@ -33,10 +33,11 @@ document.getElementById('themeToggle').addEventListener('click', () => {
 
 // Remember the current top-level admin view in the URL hash, so a page refresh
 // stays put (Clientes / A receber / Financeiro) instead of falling back to the list.
-// ?abrir=notas is how the "Notas" home-screen icon launches (see
-// manifest-notas.webmanifest); a hash, when present, wins.
+// esterprod.com/notas (the "Notas" home-screen shortcut, see core.js's
+// ON_NOTAS_PATH) and the older ?abrir=notas both open Notas; a hash, when
+// present, wins so in-app navigation survives a refresh.
 function routeAdmin(){
-  const h = (location.hash || '').replace('#', '') || new URLSearchParams(location.search).get('abrir') || '';
+  const h = (location.hash || '').replace('#', '') || new URLSearchParams(location.search).get('abrir') || (ON_NOTAS_PATH ? 'notas' : '');
   if(h === 'financeiro') loadFinance();
   else if(h === 'a-receber') loadDebts();
   else if(h === 'lembretes') loadReminders();
