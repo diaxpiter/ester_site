@@ -7,8 +7,9 @@ import {
 import {
   db, escapeHtml, formatDatePt, getISO, setISO, money, QUARTERS,
   SS_INCOME_FACTOR, SS_RATE, SS_ADJUST, msg, setAdminHash, show, ADMIN_EMAIL,
-  askConfirm
+  askConfirm, daysUntil
 } from './core.js';
+import { fetchAllInstallments } from './admin-debts-agenda.js';
 
 // Keep the income ledger in sync with a project's paid instalments.
 // Auto-created docs carry a deterministic sourceKey ("clientId:projectId:index"),
@@ -94,6 +95,54 @@ async function reloadIncome(){
     finAllEntries = [];
   }
   renderFinance();
+  loadRevenueCards();
+}
+
+// ---------- Receita (this month / this year / overdue) ----------
+// Moved here from the old Painel view. Month and year come from the income
+// ledger already loaded above; "Em atraso" needs the unpaid instalments, so
+// it's fetched separately and never blocks the ledger from rendering.
+function ymOffset(offsetMonths){
+  const d = new Date();
+  d.setMonth(d.getMonth() + offsetMonths);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function sumByPrefix(prefix){
+  return finAllEntries.reduce((s, e) => (e.date && e.date.startsWith(prefix)) ? s + (Number(e.amount) || 0) : s, 0);
+}
+// "+18%" / "-4%" vs. the prior period; no prior data reads as "—" rather than a misleading spike.
+function pctDelta(cur, prev){
+  if(prev <= 0) return cur > 0 ? '+100%' : '—';
+  const d = ((cur - prev) / prev) * 100;
+  return (d >= 0 ? '+' : '') + d.toFixed(0) + '%';
+}
+async function loadRevenueCards(){
+  const grid = document.getElementById('finRevenueGrid');
+  const year = new Date().getFullYear();
+  const thisMonth = sumByPrefix(ymOffset(0)), lastMonth = sumByPrefix(ymOffset(-1));
+  const thisYear = sumByPrefix(String(year)), lastYear = sumByPrefix(String(year - 1));
+  let overdue = null;
+  try{
+    overdue = (await fetchAllInstallments()).filter(r => !r.paid && daysUntil(r.iso) < 0);
+  }catch(err){ /* card below says it couldn't load */ }
+  const overdueTotal = overdue ? overdue.reduce((s, r) => s + r.amount, 0) : 0;
+  grid.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-num">${money.format(thisMonth)}</div>
+      <div class="stat-label">Receita este mês</div>
+      <div class="stat-sub">${pctDelta(thisMonth, lastMonth)} vs. mês anterior (${money.format(lastMonth)})</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">${money.format(thisYear)}</div>
+      <div class="stat-label">Receita este ano</div>
+      <div class="stat-sub">${pctDelta(thisYear, lastYear)} vs. ano anterior (${money.format(lastYear)})</div>
+    </div>
+    <div class="stat-card ${overdue && overdue.length ? 'is-alert' : ''}">
+      <div class="stat-num">${overdue ? money.format(overdueTotal) : '—'}</div>
+      <div class="stat-label">Em atraso</div>
+      <div class="stat-sub">${overdue ? `${overdue.length} pagamento${overdue.length === 1 ? '' : 's'}` : 'Não foi possível carregar.'}</div>
+    </div>
+  `;
 }
 
 function renderFinance(){

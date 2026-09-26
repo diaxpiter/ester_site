@@ -58,7 +58,7 @@ service cloud.firestore {
       // One doc per run of the payment-reminder cron (vercel-cron/api/send-reminders.js).
       // Written only by that function's service account, which bypasses these
       // rules, so the browser never needs write access. Read by the admin's
-      // Financeiro -> Lembretes view.
+      // Clientes -> Lembretes view.
       allow read: if isAdmin();
     }
 

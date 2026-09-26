@@ -18,7 +18,6 @@ const SHELL = [
   'js/admin-clients.js',
   'js/admin-leads.js',
   'js/admin-central.js',
-  'js/admin-dashboard.js',
   'js/admin-reminders.js',
   'js/app.js'
 ];

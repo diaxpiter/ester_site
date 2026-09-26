@@ -14,7 +14,6 @@ import { loadLeads } from './admin-leads.js';
 import { loadFinance } from './admin-finance.js';
 import { loadDebts } from './admin-debts-agenda.js';
 import { loadClientDashboard } from './client-dashboard.js';
-import { loadDashboard } from './admin-dashboard.js';
 import { loadCentral } from './admin-central.js';
 import { loadReminders } from './admin-reminders.js';
 
@@ -39,17 +38,15 @@ function routeAdmin(){
   else if(h === 'a-receber') loadDebts();
   else if(h === 'lembretes') loadReminders();
   else if(h === 'leads') loadLeads();
-  else if(h === 'painel') loadDashboard();
   else if(h === 'central') loadCentral();
   else loadAdminList(); // default landing page (fresh login, 'clientes', or any unknown hash)
   setSubnavActive(h);
 }
 
 // ============================================================
-//  ADMIN: sub-nav tabs — "Clientes/Leads" and "Financeiro/A receber" are
-// grouped behind one top-level nav entry each (see renderAdminNav below) and
-// switch via an in-page pill pair instead, so the main menu stays at 4 items
-// instead of 6. Both tab-bar instances (one per paired view) share this one
+//  ADMIN: sub-nav tabs — "Clientes/Leads/Lembretes" and "Financeiro/A receber"
+// are grouped behind one top-level nav entry each (see renderAdminNav below)
+// and switch via in-page pills instead, so the main menu stays at 3 items. Both tab-bar instances (one per paired view) share this one
 // click handler, keyed by data-subnav-group so clicking either pair's button
 // updates every copy of that group's active state across the DOM.
 // ============================================================
@@ -77,15 +74,14 @@ function renderClientNav(){
   navDynamic.innerHTML = '';
 }
 function renderAdminNav(){
-  // 4 top-level destinations — "Leads" lives inside Clientes and "A receber"
-  // lives inside Financeiro, each reachable via the in-page subnav-tab pair
-  // on those views (see setSubnavActive above). Clientes is still the
-  // default landing page on refresh (see routeAdmin above); Painel is the
-  // owner-overview dashboard, reached explicitly via this nav link.
+  // 3 top-level destinations — "Leads" and "Lembretes" live inside Clientes
+  // and "A receber" lives inside Financeiro, each reachable via the in-page
+  // subnav tabs on those views (see setSubnavActive above). Clientes is the
+  // default landing page on refresh (see routeAdmin above) — including an old
+  // #painel bookmark, since that view no longer exists.
   navDynamic.innerHTML = `
     <button id="navHamburger" class="nav-hamburger" aria-label="Abrir menu" aria-expanded="false"><span></span><span></span><span></span></button>
     <div class="nav-menu" id="navMenu">
-      <a href="#" id="navDashboardLink">Painel</a>
       <a href="#" id="navClientsLink">Clientes</a>
       <a href="#" id="navFinanceLink">Financeiro</a>
       <a href="#" id="navCentralLink">Central</a>
@@ -108,7 +104,6 @@ function renderAdminNav(){
   document.addEventListener('click', (e) => {
     if(menu.classList.contains('open') && !menu.contains(e.target) && e.target !== burger) closeMenu();
   });
-  document.getElementById('navDashboardLink').addEventListener('click', (e) => { e.preventDefault(); closeMenu(); loadDashboard(); });
   document.getElementById('navClientsLink').addEventListener('click', (e) => { e.preventDefault(); closeMenu(); loadAdminList(); });
   document.getElementById('navFinanceLink').addEventListener('click', (e) => { e.preventDefault(); closeMenu(); loadFinance(); });
   document.getElementById('navCentralLink').addEventListener('click', (e) => { e.preventDefault(); closeMenu(); loadCentral(); });
