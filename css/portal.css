@@ -894,6 +894,7 @@
   .rem-chip.is-fail{background:var(--red);border-color:var(--red);color:#fff;}
   .rem-chip.is-plan{border-style:dashed;}
   .rem-chip.is-muted{color:var(--gray);}
+  .rem-chip.is-rec{color:var(--off-white);border-color:rgba(var(--off-white-rgb),0.5);background:rgba(var(--off-white-rgb),0.08);}
   .rem-detail{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;cursor:default;}
   .rem-row[aria-expanded="true"] .rem-detail{display:block;}
   .rem-detail dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;}

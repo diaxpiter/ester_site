@@ -11,13 +11,17 @@
 //  Both collections are admin-read-only in firestore.rules; only the cron's
 //  service account writes them. "Enviado" means Brevo accepted the message,
 //  not that it reached the inbox.
+//
+//  The same cron also sends a "recording" reminder the day before each
+//  recording session; those show up here with a Gravação chip and are
+//  forecast from the projects' recordingDates (see fetchRecordings).
 // ============================================================
 import {
   getDocs, getDoc, doc, collection, query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   db, escapeHtml, escapeAttr, formatDatePt, money, setAdminHash, show,
-  daysUntil, addDaysIso, pad2, toast
+  daysUntil, addDaysIso, pad2, toast, getProjects, ADMIN_EMAIL
 } from './core.js';
 import { fetchAllInstallments, waReminderHref } from './admin-debts-agenda.js';
 import { loadAdminEdit, openProject } from './admin-clients.js';
@@ -56,6 +60,31 @@ function reminderKey(clientId, projectId, idx, phase){
   return phase === 'advance' ? `${clientId}:${projectId}:${idx}` : `${clientId}:${projectId}:${idx}:${phase}`;
 }
 
+// Every scheduled recording session of an active client, mirroring the
+// cron's recording loop (vercel-cron/api/send-reminders.js).
+async function fetchRecordings(){
+  const snap = await getDocs(collection(db, 'clients'));
+  const rows = [];
+  snap.docs.forEach(d => {
+    const data = d.data();
+    const email = data.email || '';
+    if(email === ADMIN_EMAIL || email === SENDER_EMAIL || data.deactivated) return;
+    const clientName = `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.company || email || 'Cliente';
+    getProjects(data).forEach(p => {
+      const dates = Array.isArray(p.recordingDates) ? p.recordingDates : [];
+      const count = dates.filter(Boolean).length;
+      dates.forEach((iso, i) => {
+        if(!iso) return;
+        const start = (p.recordingTimes || [])[i] || '', end = (p.recordingEndTimes || [])[i] || '';
+        rows.push({ clientId: d.id, projectId: p.id || 'legacy', projectName: p.name || 'Projeto', clientName,
+          email, idx: i, count, iso, time: start && end ? `${start} – ${end}` : start });
+      });
+    });
+  });
+  return rows;
+}
+function recordingKey(r){ return `${r.clientId}:${r.projectId}:rec:${r.idx}:${r.iso}`; }
+
 // A day can have several runs (the cron plus any manual trigger). Merge them
 // per reminder, keeping the most meaningful outcome: a send beats a failure
 // beats a missing email beats "already sent".
@@ -86,6 +115,7 @@ function toRow(e, inst){
     clientId: e.clientId, projectId: e.projectId, idx: e.idx,
     clientName: e.clientName || i.clientName || 'Cliente',
     projectName: e.projectName || i.project || 'Projeto',
+    time: e.time || '',
     count: e.count || i.count || 1,
     amount: e.amount != null ? Number(e.amount) || 0 : (i.amount || 0),
     to: e.to || i.email || '',
@@ -108,16 +138,18 @@ export async function loadReminders(){
   daysEl.innerHTML = '';
   weekEl.innerHTML = '';
 
-  let runs, sentKeys, installments;
+  let runs, sentKeys, installments, recordings;
   try{
-    const [runsSnap, sentSnap, inst] = await Promise.all([
+    const [runsSnap, sentSnap, inst, recs] = await Promise.all([
       getDocs(query(collection(db, 'emailReminderRuns'), orderBy('startedAt', 'desc'), limit(100))),
       getDocs(collection(db, 'emailRemindersSent')),
-      fetchAllInstallments()
+      fetchAllInstallments(),
+      fetchRecordings()
     ]);
     runs = runsSnap.docs.map(d => d.data());
     sentKeys = new Set(sentSnap.docs.map(d => d.id));
     installments = inst;
+    recordings = recs;
   }catch(err){
     console.error(err);
     healthEl.innerHTML = '<p class="panel-empty">Não foi possível carregar os lembretes. Confirma que as regras do Firestore foram publicadas.</p>';
@@ -125,7 +157,9 @@ export async function loadReminders(){
   }
 
   const instByKey = new Map(installments.map(r => [`${r.clientId}:${r.projectId}:${r.idx}`, r]));
-  const findInst = e => instByKey.get(`${e.clientId}:${e.projectId}:${e.idx}`);
+  // Recording entries share clientId/projectId/idx shapes with instalments
+  // but point at a recording slot, so they never borrow an instalment.
+  const findInst = e => e.phase === 'recording' ? undefined : instByKey.get(`${e.clientId}:${e.projectId}:${e.idx}`);
 
   const now = new Date();
   const todayIso = localIso(now);
@@ -159,6 +193,15 @@ export async function loadReminders(){
         outcome: r.email ? 'planned' : 'no-email', to: r.email };
       if(r.email) simSent.add(key);
       rows.push(toRow(e, r));
+    });
+    recordings.forEach(r => {
+      if(daysUntil(r.iso) - d !== 1) return;
+      const key = recordingKey(r);
+      if(simSent.has(key)) return;
+      rows.push(toRow({ clientId: r.clientId, projectId: r.projectId, idx: r.idx, dueDate: r.iso, due: 1, phase: 'recording',
+        clientName: r.clientName, projectName: r.projectName, count: r.count, amount: 0, time: r.time,
+        outcome: r.email ? 'planned' : 'no-email', to: r.email }));
+      if(r.email) simSent.add(key);
     });
     forecast.set(d, rows);
   }
@@ -252,6 +295,7 @@ function renderHealth(el, { todayRuns, ranToday, runsByDay, todayIso, firstLogge
 const ROW_ORDER = { failed: 0, 'no-email': 1, sent: 2, planned: 3, skipped: 4 };
 
 function phaseChip(r){
+  if(r.phase === 'recording') return `<span class="rem-chip is-rec">Gravação · ${formatDatePt(r.dueDate).slice(0, 5)}${r.time ? ` ${escapeHtml(r.time.split(' ')[0])}` : ''}</span>`;
   if(r.phase === 'overdue') return '<span class="rem-chip is-late">Atraso · multa 5%</span>';
   if(r.phase === 'today') return '<span class="rem-chip is-today">Vence hoje</span>';
   const d = Number(r.due);
@@ -267,10 +311,12 @@ function statusChip(r, kind, colIso){
   return `<span class="rem-chip is-muted">Já enviado${m ? ` ${formatDatePt(m[1]).slice(0, 5)}` : ''}</span>`;
 }
 function rowAmount(r){
+  if(r.phase === 'recording') return r.time ? escapeHtml(r.time) : '';
   if(!r.amount) return '—';
   return money.format(r.phase === 'overdue' ? r.amount * 1.05 : r.amount);
 }
 function failureAdvice(r){
+  if(r.phase === 'recording') return 'Este lembrete não volta a ser enviado sozinho. Avisa o cliente por WhatsApp.';
   // "today"/"overdue" notices only exist for one day, so a failed one is
   // gone for good; an advance notice with days to spare is retried tomorrow.
   if(r.phase === 'advance' && Number(r.due) > 1) return 'O envio automático tenta de novo amanhã.';
@@ -278,11 +324,12 @@ function failureAdvice(r){
 }
 
 function renderRow(r, kind, colIso){
-  const parcela = r.count > 1 ? ` · parcela ${r.idx + 1}/${r.count}` : '';
+  const rec = r.phase === 'recording';
+  const parcela = rec ? ' · lembrete de gravação' : (r.count > 1 ? ` · parcela ${r.idx + 1}/${r.count}` : '');
   const dl = [
     r.to ? ['Para', escapeHtml(r.to)] : null,
     r.subject ? ['Assunto', escapeHtml(r.subject)] : null,
-    ['Vence', formatDatePt(r.dueDate)],
+    rec ? ['Gravação', `${formatDatePt(r.dueDate)}${r.time ? ` · ${escapeHtml(r.time)}` : ''}`] : ['Vence', formatDatePt(r.dueDate)],
     r.phase === 'overdue' && r.amount ? ['Valor', `${money.format(r.amount)} + ${money.format(r.amount * 0.05)} de multa`] : null,
     r.outcome === 'failed' && r.error ? ['Erro', `<span class="rem-err">${escapeHtml(r.error)}</span>`] : null
   ].filter(Boolean).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
@@ -298,11 +345,14 @@ function renderRow(r, kind, colIso){
     note = 'Este cliente não tem email na ficha, por isso o envio automático salta-o.';
     actions.push(`<button type="button" class="btn" data-rem-act="email" data-client="${escapeAttr(r.clientId)}">Adicionar email</button>`);
     if(wa) actions.push(`<a class="btn btn-ghost" href="${escapeAttr(wa)}" target="_blank" rel="noopener">Avisar por WhatsApp</a>`);
+  }else if(r.outcome === 'planned' && rec){
+    note = 'Sai na véspera da gravação. Se a data mudou, altera-a no projeto e o lembrete acompanha.';
+    actions.push(`<button type="button" class="btn btn-ghost" data-rem-act="project" data-client="${escapeAttr(r.clientId)}" data-project="${escapeAttr(r.projectId)}">Abrir projeto</button>`);
   }else if(r.outcome === 'planned'){
     note = 'Se o cliente já pagou, marca a parcela como paga no projeto e este lembrete não sai.';
     actions.push(`<button type="button" class="btn btn-ghost" data-rem-act="project" data-client="${escapeAttr(r.clientId)}" data-project="${escapeAttr(r.projectId)}">Já pagou? Abrir projeto</button>`);
   }else if(r.outcome === 'skipped'){
-    note = 'O aviso antecipado só sai uma vez, por isso não se repetiu.';
+    note = rec ? 'Este lembrete de gravação já tinha saído.' : 'O aviso antecipado só sai uma vez, por isso não se repetiu.';
   }
 
   const open = r.outcome === 'failed';
