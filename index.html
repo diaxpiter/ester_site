@@ -216,18 +216,25 @@
       </div>
       <p class="section-note" data-i18n="showreel.credit">Concept, script, direction, filming and editing by Ester.</p>
     </div>
-    <div class="showreel-stage" data-reveal>
+    <!-- A muted 5-second preview loops while the section is on screen; a
+         click anywhere on it switches to the full film with sound. Films
+         are listed in SHOWREELS (script below); the first is shown first. -->
+    <div class="showreel-stage is-preview" id="showreelStage" data-reveal>
       <video
         id="showreelVideo"
         class="showreel-video"
-        poster="images/showreel-poster.jpg"
-        controls
+        poster="images/capa_autoral.jpg"
+        muted
+        loop
         playsinline
         preload="none"
-        width="1920" height="1080">
-        <source src="videos/ana-rita.mp4?v=1" type="video/mp4">
-      </video>
+        width="1920" height="1080"></video>
+      <button type="button" class="showreel-cta" id="showreelCta">
+        <span class="showreel-cta-icon" aria-hidden="true"></span>
+        <span data-i18n="showreel.cta">Watch the full film</span>
+      </button>
     </div>
+    <div class="showreel-picks" id="showreelPicks" data-reveal><!-- built from SHOWREELS by JS --></div>
   </div>
 </section>
 
@@ -540,6 +547,7 @@
       "about.stat3": "Years Shooting",
       "showreel.title": "Original Production",
       "showreel.credit": "Concept, script, direction, filming and editing by Ester.",
+      "showreel.cta": "Watch the full film",
       "contact.eyebrow": "Get in touch",
       "contact.title": "Together, let's create<br>something memorable.",
       "footer.rights": "© 2026 Ester"
@@ -592,6 +600,7 @@
       "about.stat3": "Anos de Experiência",
       "showreel.title": "Produção Autoral",
       "showreel.credit": "Conceito, roteiro, direção, captação e edição por Ester.",
+      "showreel.cta": "Ver vídeo completo",
       "contact.eyebrow": "Entre em contato",
       "contact.title": "Juntos vamos criar<br>algo memorável.",
       "footer.rights": "© 2026 Ester"
@@ -824,6 +833,68 @@
     if(prev) prev.addEventListener('click', () => reelSlider.scrollBy({ left: -step(), behavior:'smooth' }));
     if(next) next.addEventListener('click', () => reelSlider.scrollBy({ left:  step(), behavior:'smooth' }));
   }
+
+  // ===== Produção Autoral — preview-then-play showreel =====
+  // Each film has a short muted preview (videos/*-preview.mp4, ~5 s, no
+  // audio, under 1 MB) that loops while the section is on screen, and the
+  // full film, which only downloads once someone clicks. Order here is the
+  // order on the page.
+  const SHOWREELS = [
+    { title:'Arte · Amanda Reis', poster:'images/capa_autoral.jpg',    preview:'videos/amanda-reis-preview.mp4?v=1', full:'videos/amanda-reis.mp4?v=1' },
+    { title:'Ana Rita',           poster:'images/showreel-poster.jpg', preview:'videos/ana-rita-preview.mp4?v=1',    full:'videos/ana-rita.mp4?v=1' }
+  ];
+  (function showreel(){
+    const stage = document.getElementById('showreelStage');
+    const video = document.getElementById('showreelVideo');
+    const cta = document.getElementById('showreelCta');
+    const picks = document.getElementById('showreelPicks');
+    if(!stage || !video) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let current = 0, full = false, onScreen = false;
+
+    function playPreview(){
+      if(full || reduced || !onScreen) return;
+      video.play().catch(() => {});
+    }
+    function showPreview(i){
+      current = i; full = false;
+      stage.classList.add('is-preview');
+      video.controls = false; video.muted = true; video.loop = true;
+      video.poster = SHOWREELS[i].poster;
+      // Reduced motion: no looping preview, just the cover until clicked.
+      if(reduced) video.removeAttribute('src'); else video.src = SHOWREELS[i].preview;
+      picks.querySelectorAll('button').forEach((b, j) => b.setAttribute('aria-pressed', String(j === i)));
+      playPreview();
+    }
+    function playFull(){
+      if(full) return;
+      full = true;
+      stage.classList.remove('is-preview');
+      video.loop = false; video.muted = false; video.controls = true;
+      video.src = SHOWREELS[current].full;
+      video.play().catch(() => {});
+    }
+
+    picks.innerHTML = SHOWREELS.map((r, i) =>
+      '<button type="button" class="showreel-pick" aria-pressed="' + (i === 0) + '"><img src="' + r.poster + '" alt="" loading="lazy" decoding="async"><span>' + r.title + '</span></button>'
+    ).join('');
+    picks.querySelectorAll('button').forEach((b, i) => b.addEventListener('click', () => showPreview(i)));
+    cta.addEventListener('click', playFull);
+    // Clicking the preview itself also opens the full film; once it's
+    // playing, clicks belong to the native controls.
+    video.addEventListener('click', () => { if(!full) playFull(); });
+    video.addEventListener('ended', () => { if(full) showPreview(current); });
+
+    if('IntersectionObserver' in window){
+      new IntersectionObserver((entries) => {
+        onScreen = entries[0].isIntersecting;
+        if(onScreen) playPreview(); else if(!full) video.pause();
+      }, { threshold: 0.35 }).observe(stage);
+    }else{
+      onScreen = true;
+    }
+    showPreview(0);
+  })();
 
   // ===== Floating WhatsApp CTA — fades in once the hero (with its own WhatsApp
   // CTA) scrolls out of view. Hidden while the lightbox is open via the
