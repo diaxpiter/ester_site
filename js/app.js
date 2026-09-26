@@ -7,7 +7,7 @@ import {
   onAuthStateChanged, signOut, signInWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  auth, ADMIN_EMAIL, show, msg, toggleTheme, enhanceDateField
+  auth, ADMIN_EMAIL, show, msg, toggleTheme, enhanceDateField, syncInstallTarget
 } from './core.js';
 import { loadAdminList } from './admin-clients.js';
 import { loadLeads } from './admin-leads.js';
@@ -33,8 +33,10 @@ document.getElementById('themeToggle').addEventListener('click', () => {
 
 // Remember the current top-level admin view in the URL hash, so a page refresh
 // stays put (Clientes / A receber / Financeiro) instead of falling back to the list.
+// ?abrir=notas is how the "Notas" home-screen icon launches (see
+// manifest-notas.webmanifest); a hash, when present, wins.
 function routeAdmin(){
-  const h = (location.hash || '').replace('#', '');
+  const h = (location.hash || '').replace('#', '') || new URLSearchParams(location.search).get('abrir') || '';
   if(h === 'financeiro') loadFinance();
   else if(h === 'a-receber') loadDebts();
   else if(h === 'lembretes') loadReminders();
@@ -166,6 +168,10 @@ try{
     m.rel = 'manifest';
     m.href = 'manifest.webmanifest';
     document.head.appendChild(m);
+    // Opened straight on Notas (portal#notas): offer the Notas icon from the
+    // first paint, before the router runs. See syncInstallTarget in core.js.
+    const h = (location.hash || '').replace('#', '') || new URLSearchParams(location.search).get('abrir');
+    syncInstallTarget(h);
   }
 }catch(e){}
 

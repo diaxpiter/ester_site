@@ -446,6 +446,28 @@ document.addEventListener('keydown', (e) => {
 export function setAdminHash(h){
   try{ history.replaceState(null, '', location.pathname + (h ? '#' + h : '')); }
   catch(e){ /* ignore */ }
+  syncInstallTarget(h);
+}
+
+// "Add to Home Screen" launches the manifest's start_url, not the page being
+// viewed (iOS 16.4+, Android). So while Notas is open the admin points at
+// manifest-notas.webmanifest (start_url portal.html?abrir=notas), and at the
+// regular admin manifest everywhere else. Swapping the <link> element, not
+// just its href, makes the browser fetch the new one. Admin only: the client
+// area deliberately has no manifest (see app.js).
+export function syncInstallTarget(h){
+  const old = document.querySelector('link[rel="manifest"]');
+  if(!old) return;
+  const notes = h === 'notas';
+  const href = notes ? 'manifest-notas.webmanifest' : 'manifest.webmanifest';
+  if(old.getAttribute('href') !== href){
+    const m = document.createElement('link');
+    m.rel = 'manifest';
+    m.href = href;
+    old.replaceWith(m);
+  }
+  const title = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+  if(title) title.content = notes ? 'Notas' : 'Ester';
 }
 export function msg(el, text, type){
   el.textContent = text;

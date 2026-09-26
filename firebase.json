@@ -39,7 +39,7 @@
         ]
       },
       {
-        "source": "/manifest.webmanifest",
+        "source": "/manifest*.webmanifest",
         "headers": [
           { "key": "Cache-Control", "value": "no-cache" }
         ]
