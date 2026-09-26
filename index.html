@@ -247,11 +247,9 @@
       </div>
     </div>
 
-    <div class="reel-wrap" data-reveal>
-      <button class="reel-arrow reel-prev" id="reelPrev" aria-label="Anterior">&#8249;</button>
-      <div class="reel-slider" id="reelSlider" data-lenis-prevent><!-- cards built from WORKS by JS --></div>
-      <button class="reel-arrow reel-next" id="reelNext" aria-label="Seguinte">&#8250;</button>
-    </div>
+    <!-- 3-column grid, like an Instagram profile. Six reels = 3×2; add three
+         more to WORKS for a full 3×3. -->
+    <div class="reel-grid" id="reelGrid" data-reveal><!-- cards built from WORKS by JS --></div>
   </div>
 </section>
 
@@ -711,7 +709,7 @@
     }
   })();
 
-  // ===== Portfolio reel slider (Vimeo-ready) =====
+  // ===== Portfolio reel grid (Vimeo-ready) =====
   // Fill in `vimeo` with the id from a vimeo.com/<id> link to serve that reel
   // from Vimeo. While `vimeo` is empty it falls back to the local mp4, so the
   // site keeps working during the move to Vimeo (swap them in one at a time).
@@ -779,11 +777,9 @@
   lightbox.addEventListener('click', (e) => { if(e.target === lightbox) closeLightbox(); });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeLightbox(); });
 
-  // Build slider cards from WORKS and wire up drag/arrow scrolling.
-  const reelSlider = document.getElementById('reelSlider');
-  if(reelSlider){
-    let isDown = false, startX = 0, startScroll = 0, dragged = false;
-
+  // Build the grid cards from WORKS.
+  const reelGrid = document.getElementById('reelGrid');
+  if(reelGrid){
     WORKS.forEach((item) => {
       const card = document.createElement('div');
       card.className = 'reel-card';
@@ -800,38 +796,12 @@
           `<div class="ig-act">${IG.share}<span>${fmtCount(item.shares||0)}</span></div>` +
         `</div>` +
         `<div class="ig-bottom"><div class="ig-cta">Clique aqui para ver mais</div><div class="ig-audio">${IG.note}<span>Som original</span></div></div>`;
-      card.addEventListener('click', () => { if(!dragged) openWork(item); });
+      card.addEventListener('click', () => openWork(item));
       card.addEventListener('keydown', (e) => {
         if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openWork(item); }
       });
-      reelSlider.appendChild(card);
+      reelGrid.appendChild(card);
     });
-
-    // Click-drag to scroll on desktop (touch devices scroll natively).
-    reelSlider.addEventListener('pointerdown', (e) => {
-      if(e.pointerType === 'touch') return;
-      isDown = true; dragged = false;
-      startX = e.clientX; startScroll = reelSlider.scrollLeft;
-      reelSlider.classList.add('dragging');
-    });
-    reelSlider.addEventListener('pointermove', (e) => {
-      if(!isDown) return;
-      const dx = e.clientX - startX;
-      if(Math.abs(dx) > 4) dragged = true;
-      reelSlider.scrollLeft = startScroll - dx;
-    });
-    const endDrag = () => { isDown = false; reelSlider.classList.remove('dragging'); };
-    reelSlider.addEventListener('pointerup', endDrag);
-    reelSlider.addEventListener('pointerleave', endDrag);
-    // swallow the click that follows a real drag so it doesn't open the lightbox
-    reelSlider.addEventListener('click', (e) => { if(dragged){ e.stopPropagation(); e.preventDefault(); } }, true);
-
-    // Prev / next arrows scroll by ~one card width.
-    const step = () => { const c = reelSlider.querySelector('.reel-card'); return (c ? c.offsetWidth : 260) + 14; };
-    const prev = document.getElementById('reelPrev');
-    const next = document.getElementById('reelNext');
-    if(prev) prev.addEventListener('click', () => reelSlider.scrollBy({ left: -step(), behavior:'smooth' }));
-    if(next) next.addEventListener('click', () => reelSlider.scrollBy({ left:  step(), behavior:'smooth' }));
   }
 
   // ===== Produção Autoral — preview-then-play showreel =====
