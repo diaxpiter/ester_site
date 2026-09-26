@@ -468,6 +468,9 @@ export function syncInstallTarget(h){
   }
   const title = document.querySelector('meta[name="apple-mobile-web-app-title"]');
   if(title) title.content = notes ? 'Notas' : 'Ester';
+  // iOS takes the home-screen icon from apple-touch-icon, not the manifest.
+  const icon = document.getElementById('appleIcon');
+  if(icon) icon.href = notes ? 'images/icons/icone_notas.png' : 'images/icons/icone_admin.png';
 }
 export function msg(el, text, type){
   el.textContent = text;
