@@ -841,6 +841,58 @@
     .central-tree{font-size:11px;padding:14px;}
   }
 
+  /* ---------- admin: Escrever email (js/admin-email-editor.js) ----------
+     Form on the left, the email as it will look on the right; stacked on a
+     phone. The preview is the email's own inline-styled HTML, so it keeps
+     its white/black look in both portal themes. */
+  .mail-editor{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:40px;align-items:start;}
+  .mail-preview-col{position:sticky;top:20px;display:flex;flex-direction:column;gap:12px;}
+  .mail-actions{display:flex;flex-wrap:wrap;gap:10px;}
+  .mail-actions .btn{padding:12px 20px;}
+  .mail-hint{color:var(--gray);font-size:12.5px;line-height:1.5;margin:0 0 12px;}
+  .mail-hint:empty{display:none;}
+  .mail-hint-inline{text-transform:none;letter-spacing:0;}
+  .mail-data{border:1px solid var(--line);border-radius:6px;padding:14px 16px 0;margin-bottom:28px;}
+  .mail-data summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:var(--gray);margin-bottom:14px;}
+  .mail-section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+  .mail-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
+  .mail-row{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:8px;align-items:start;}
+  .mail-row textarea{min-height:76px;resize:vertical;line-height:1.55;font-size:14px;padding:10px 12px;}
+  .mail-x{
+    height:36px;background:transparent;border:1px solid var(--line);border-radius:2px;color:var(--gray);
+    cursor:pointer;font-size:16px;line-height:1;
+  }
+  .mail-x:hover{color:#f0917f;border-color:rgba(240,145,127,0.5);}
+  .mail-line{
+    display:grid;grid-template-columns:96px minmax(0,1fr) 96px 36px;gap:8px;align-items:center;
+    border:1px solid var(--line);border-radius:6px;padding:10px;
+  }
+  .mail-line input,.mail-line select{
+    background:transparent;border:1px solid var(--line);color:var(--off-white);border-radius:2px;
+    padding:8px 10px;font-family:'Inter',sans-serif;font-size:13px;min-width:0;width:100%;
+  }
+  .mail-line select option{background:var(--black);color:var(--off-white);}
+  .mail-line input:focus,.mail-line select:focus{outline:none;border-color:var(--off-white);}
+  .mail-line .mail-line-label{grid-column:1 / -1;font-weight:500;}
+  .mail-line input[hidden]{display:none;}
+  .mail-line:has(input[data-line="amount"][hidden]) input[data-line="text"]{grid-column:2 / 4;}
+  .mail-presets{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px;font-size:12px;color:var(--gray);}
+  .mail-presets .btn-mini{padding:7px 12px;font-size:11px;}
+  .mail-total-field{margin-bottom:0;}
+  .mail-preview-meta{display:flex;flex-direction:column;gap:2px;font-size:13px;border:1px solid var(--line);border-bottom:0;border-radius:6px 6px 0 0;padding:10px 14px;}
+  .mail-preview-meta span:first-child{font-weight:600;}
+  .mail-preview-meta span:last-child{color:var(--gray);}
+  .mail-preview{border:1px solid var(--line);border-radius:0 0 6px 6px;overflow:hidden;margin-top:-12px;}
+  @media(max-width:900px){
+    .mail-editor{grid-template-columns:1fr;gap:28px;}
+    .mail-preview-col{position:static;}
+  }
+  @media(max-width:520px){
+    .mail-line{grid-template-columns:96px minmax(0,1fr) 36px;}
+    .mail-line input[data-line="text"]{grid-column:1 / -1;order:5;}
+    .mail-line:has(input[data-line="amount"][hidden]) input[data-line="text"]{grid-column:1 / -1;}
+  }
+
   /* ---------- admin: Lembretes (js/admin-reminders.js) ----------
      Amber/red/green are the same literals the rest of the portal uses for
      "vence hoje" / "em atraso" / paid, so the chips read the same everywhere. */
