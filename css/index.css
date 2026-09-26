@@ -529,32 +529,24 @@
     .how-steps{grid-template-columns:1fr;gap:32px;}
   }
 
-  /* ===== PORTFOLIO REEL SLIDER ===== */
-  .reel-wrap{ position:relative; }
-  .reel-slider{
-    display:flex;
+  /* ===== PORTFOLIO REEL GRID ===== */
+  /* 3 columns at every width, like an Instagram profile grid. Capped in
+     width so a 9:16 card stays about the size the old slider used. */
+  .reel-grid{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
     gap:14px;
-    overflow-x:auto;
-    scroll-snap-type:x mandatory;
-    scroll-behavior:smooth;
-    -webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-    -ms-overflow-style:none;
-    padding-bottom:4px;
+    max-width:960px;
+    margin:0 auto;
   }
-  .reel-slider::-webkit-scrollbar{ display:none; }
-  /* while click-dragging on desktop, disable snap so the drag feels direct */
-  .reel-slider.dragging{ scroll-snap-type:none; scroll-behavior:auto; cursor:grabbing; }
 
   .reel-card{
-    flex:0 0 auto;
-    width:clamp(210px, 26vw, 300px);
+    width:100%;
     aspect-ratio:9/16;
     position:relative;
     overflow:hidden;
     border-radius:6px;
     background:linear-gradient(160deg, #1c1c1c, #050505 70%);
-    scroll-snap-align:start;
     cursor:pointer;
     -webkit-user-select:none; user-select:none;
   }
@@ -640,24 +632,15 @@
     max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
 
-  .reel-arrow{
-    position:absolute;
-    top:50%; transform:translateY(-50%);
-    z-index:3;
-    width:44px;height:44px;
-    border-radius:50%;
-    border:1px solid var(--line);
-    background:rgba(10,10,10,0.6);
-    color:var(--off-white);
-    font-size:24px; line-height:1;
-    cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
-    transition:background 0.25s ease, color 0.25s ease;
+  /* Phone: cards are ~110px wide, so drop the like/comment column and the
+     caption — just the cover and the reel icon, as on Instagram. */
+  @media (max-width:700px){
+    .reel-grid{ gap:4px; }
+    .reel-card{ border-radius:3px; }
+    .ig-actions, .ig-bottom{ display:none; }
+    .ig-reel{ top:6px; right:6px; width:16px; height:16px; }
+    .card-shade{ display:none; }
   }
-  .reel-arrow:hover{ background:var(--off-white); color:var(--black); }
-  .reel-prev{ left:8px; }
-  .reel-next{ right:8px; }
-  @media (max-width:700px){ .reel-arrow{ display:none; } }
 
   /* ===== PHOTO GRID ===== */
   .photo-grid{
