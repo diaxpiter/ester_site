@@ -165,13 +165,15 @@ try{
   // page installable on Android). Client gets NO manifest → iOS uses the CURRENT
   // url (with ?c=) as the home-screen launch url.
   if(!isClient){
+    // Pick the right manifest BEFORE inserting it: Safari reads the first
+    // manifest link it sees and ignores a later swap, so adding the admin one
+    // and switching to the Notas one afterwards still saved portal.html.
+    const h = (location.hash || '').replace('#', '') || new URLSearchParams(location.search).get('abrir');
     const m = document.createElement('link');
     m.rel = 'manifest';
-    m.href = 'manifest.webmanifest';
+    m.href = (ON_NOTAS_PATH || h === 'notas') ? 'manifest-notas.webmanifest' : 'manifest.webmanifest';
     document.head.appendChild(m);
-    // Opened straight on Notas (portal#notas): offer the Notas icon from the
-    // first paint, before the router runs. See syncInstallTarget in core.js.
-    const h = (location.hash || '').replace('#', '') || new URLSearchParams(location.search).get('abrir');
+    // Title and apple-touch-icon to match (see syncInstallTarget in core.js).
     syncInstallTarget(h);
   }
 }catch(e){}
