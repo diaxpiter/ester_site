@@ -982,3 +982,18 @@
     .rem-streak{justify-self:start;text-align:left;}
     .rem-bars{justify-content:flex-start;}
   }
+
+  /* ---------- touch screens: no zoom when a field is tapped ----------
+     iOS Safari zooms the page in whenever the focused field's text is
+     smaller than 16px, and most admin fields are 13–15px. On touch devices
+     only, fields (and the Notas lines, which are editable too) use 16px;
+     the desktop layout is unchanged and pinch-zoom still works. Headings in
+     Notas are already larger, so they're left alone. */
+  @media (hover:none) and (pointer:coarse){
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea,
+    .nb:not(.nb-h) .nb-text{
+      font-size:16px !important;
+    }
+  }
