@@ -824,6 +824,13 @@
   .notes-tool:hover:not(:disabled),.notes-back:hover{border-color:rgba(var(--off-white-rgb),0.4);}
   .notes-tool:disabled{opacity:0.4;cursor:default;}
   .notes-tool-danger{color:#f0917f;}
+  .notes-fmt{display:inline-flex;gap:0;}
+  .notes-fmt-btn{min-width:32px;padding:6px 9px;border-radius:0;margin-left:-1px;font-family:Georgia,'Times New Roman',serif;font-size:14px;line-height:1;}
+  .notes-fmt-btn:first-child{border-radius:6px 0 0 6px;margin-left:0;}
+  .notes-fmt-btn:last-child{border-radius:0 6px 6px 0;}
+  .notes-fmt-btn.is-on{background:var(--off-white);color:var(--black);border-color:var(--off-white);position:relative;}
+  .nb-text b{font-weight:700;}
+  .nb-text u{text-underline-offset:3px;}
   .notes-back{display:none;border:0;padding-left:0;color:#f0a24b;font-size:14px;}
   .notes-meta{color:var(--gray);font-size:11px;text-align:center;margin:14px 0 6px;}
   .notes-title{
