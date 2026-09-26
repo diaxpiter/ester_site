@@ -3,8 +3,10 @@
 //  3 days before the due date, again on the due date itself, and once more
 //  on the first day overdue (with the contract's one-time 5% late fee) — see
 //  the "advance" / "today" / "overdue" phase split around the
-//  emailRemindersSent dedup key, below. Triggered daily by vercel.json's
-//  cron entry — chosen over
+//  emailRemindersSent dedup key, below. The same run also emails a
+//  "recording" reminder the day before each recording session (see
+//  recordingEmailHtml and the second loop below). Triggered daily by
+//  vercel.json's cron entry — chosen over
 //  a Firebase Cloud Function because that would require upgrading the
 //  ester-website-ee664 project to the Blaze (pay-as-you-go) plan just for
 //  Cloud Scheduler. Firestore itself is free to read/write from anywhere via
@@ -178,7 +180,9 @@ function preheaderBlock(text) {
   return `<div style="display:none !important;font-size:1px;line-height:1px;color:#ffffff;opacity:0;max-height:0;max-width:0;overflow:hidden;mso-hide:all;">${text}${pad}</div>`;
 }
 
-function esterEmailShell({ preheader, bodyHtml }) {
+// ruleColor: the thin band under the hero. Amber = "this is about money";
+// the recording reminder passes a neutral grey so amber keeps that meaning.
+function esterEmailShell({ preheader, bodyHtml, ruleColor = "#f0a24b" }) {
   return `<!DOCTYPE html>
 <html lang="pt">
 <body style="margin:0;padding:0;background-color:#e8e7e3;">
@@ -197,9 +201,9 @@ ${preheaderBlock(preheader)}
       </td>
     </tr>
 
-    <!-- filete âmbar: sinaliza "assunto: pagamento" -->
+    <!-- filete: âmbar sinaliza "assunto: pagamento", cinza nos lembretes de gravação -->
     <tr>
-      <td height="2" bgcolor="#f0a24b" style="background-color:#f0a24b;font-size:0;line-height:0;">&nbsp;</td>
+      <td height="2" bgcolor="${ruleColor}" style="background-color:${ruleColor};font-size:0;line-height:0;">&nbsp;</td>
     </tr>
 
     <!-- CORPO -->
@@ -339,6 +343,51 @@ function overdueEmailHtml({ clientFirstName, projectName, parcelaNote, amount, i
         <p style="margin:0;color:#5a5a57;">Qualquer dúvida ou necessidade de esclarecimento, estou à disposição.</p>`;
 
   return esterEmailShell({ preheader, bodyHtml });
+}
+
+// ---- recording reminder (the day before a session) ----
+const WEEKDAYS_PT = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+function weekdayPt(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return WEEKDAYS_PT[new Date(y, m - 1, d).getDay()];
+}
+// "10:00 – 12:00", "10:00", or "" when the project has no time set.
+function timeRange(start, end) {
+  if (start && end) return `${start} – ${end}`;
+  return start || "";
+}
+function recordingSubject(iso, start) {
+  const ddmm = formatDatePt(iso).slice(0, 5);
+  return start ? `Amanhã temos gravação · ${ddmm} às ${start}` : `Amanhã temos gravação · ${ddmm}`;
+}
+function recordingEmailHtml({ clientFirstName, projectName, ordinalNote, iso, start, end }) {
+  clientFirstName = escapeHtml(clientFirstName);
+  projectName = escapeHtml(projectName);
+  const greetingName = clientFirstName ? ` ${clientFirstName}` : "";
+  const when = timeRange(start, end);
+  const weekday = weekdayPt(iso);
+  const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+
+  const preheader = `${projectName} · amanhã, ${weekday}${when ? `, ${when}` : ""}.`;
+  const bodyHtml = `
+        <p style="margin:0 0 18px;">Oi${greetingName}! Tudo bem? ✨</p>
+
+        <p style="margin:0 0 22px;">Passo só para lembrar que amanhã temos a gravação de <strong>${projectName}</strong>${ordinalNote}.</p>
+
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin:0 0 24px;">
+          <tr>
+            <td style="background-color:#f6f5f2;border-left:2px solid #0a0a0a;padding:16px 18px;font-family:Helvetica,Arial,sans-serif;word-break:break-word;">
+              <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#8c8c86;padding-bottom:6px;">Gravação</div>
+              <div style="font-size:17px;line-height:1.4;color:#1f1f1e;"><strong>${weekdayCap}, ${formatDatePt(iso)}</strong>${when ? `&nbsp;&nbsp;&middot;&nbsp;&nbsp;${when}` : ""}</div>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin:0 0 14px;color:#5a5a57;">Se precisar de remarcar, responda a este email ou fale comigo no WhatsApp.</p>
+
+        <p style="margin:0;color:#5a5a57;">Até amanhã!</p>`;
+
+  return esterEmailShell({ preheader, bodyHtml, ruleColor: "#d9d7cf" });
 }
 
 module.exports = async (req, res) => {
@@ -519,6 +568,75 @@ module.exports = async (req, res) => {
         }
       }
     }
+
+    // ---- recording reminders: the day before each session ----
+    // Every project kind, pontual included (those record too); deactivated
+    // clients are skipped. The dedup key carries the date, so moving a
+    // session to another day sends a fresh reminder the day before the new
+    // date. Only due === 1: a reminder the morning OF the session could
+    // arrive after it has started, so a missed run is not caught up.
+    if (data.deactivated) continue;
+    for (const p of getProjects(data)) {
+      const recDates = Array.isArray(p.recordingDates) ? p.recordingDates : [];
+      const starts = p.recordingTimes || [];
+      const ends = p.recordingEndTimes || [];
+      const projectId = p.id || "legacy";
+      const projectName = p.name || "Projeto";
+      const scheduled = recDates.filter(Boolean).slice().sort();
+      for (let i = 0; i < recDates.length; i++) {
+        const iso = recDates[i];
+        if (!iso || daysUntil(iso) !== 1) continue;
+        const start = starts[i] || "", end = ends[i] || "";
+        const reminderKey = `${clientDoc.id}:${projectId}:rec:${i}:${iso}`;
+        const reminderRef = db.collection("emailRemindersSent").doc(reminderKey);
+        const ordinalNote = scheduled.length > 1 ? ` (gravação ${scheduled.indexOf(iso) + 1} de ${scheduled.length})` : "";
+        const subject = recordingSubject(iso, start);
+        const entry = {
+          clientId: clientDoc.id, clientName, to: clientEmail, projectId, projectName,
+          idx: i, count: scheduled.length, amount: 0, subject,
+          dueDate: iso, due: 1, phase: "recording", time: timeRange(start, end),
+          reminderKey, outcome: null, error: null
+        };
+        run.considered.push(entry);
+        if (!clientEmail) {
+          noEmail++;
+          entry.outcome = "no-email";
+          entry.error = "cliente sem email na ficha";
+          continue;
+        }
+        const already = await reminderRef.get();
+        if (already.exists) {
+          skipped++;
+          entry.outcome = "skipped";
+          entry.error = `already sent ${already.get("sentAt") || "(no sentAt)"}`;
+          continue;
+        }
+        try {
+          await transporter.sendMail({
+            from: `Estephanie Cerqueira <${SENDER_EMAIL}>`,
+            replyTo: ADMIN_EMAIL,
+            to: clientEmail,
+            subject,
+            html: recordingEmailHtml({ clientFirstName, projectName, ordinalNote, iso, start, end })
+          });
+          await reminderRef.set({
+            sentAt: new Date().toISOString(),
+            clientId: clientDoc.id,
+            projectId,
+            idx: i,
+            dueDate: iso,
+            phase: "recording"
+          });
+          sent++;
+          entry.outcome = "sent";
+        } catch (err) {
+          failed++;
+          entry.outcome = "failed";
+          entry.error = [err && err.message, err && err.response].filter(Boolean).join(" | ") || String(err);
+          console.error(`Falha ao enviar lembrete de gravação para ${clientEmail} (cliente ${clientDoc.id}, projeto ${projectId}, gravação ${i})`, err);
+        }
+      }
+    }
   }
   } catch (err) {
     run.sent = sent; run.skipped = skipped; run.failed = failed; run.noEmail = noEmail;
@@ -529,6 +647,6 @@ module.exports = async (req, res) => {
   }
 
   run.sent = sent; run.skipped = skipped; run.failed = failed; run.noEmail = noEmail;
-  console.log(`sendPaymentReminders: ${sent} enviado(s), ${skipped} já enviado(s) antes, ${failed} falhado(s).`);
+  console.log(`sendReminders: ${sent} enviado(s), ${skipped} já enviado(s) antes, ${failed} falhado(s).`);
   await finishRun(200, { sent, skipped, failed, run: runRef.id });
 };
