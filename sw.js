@@ -2,7 +2,7 @@
 // Goal: make the portal installable + fast, WITHOUT breaking Firebase.
 // Strategy: only touch same-origin GET requests. Firestore/Auth/Google Fonts
 // (cross-origin) pass straight through, untouched, so live data is never stale.
-const CACHE = 'ester-v30';
+const CACHE = 'ester-v33';
 const SHELL = [
   'portal.html',
   'index.html',
@@ -51,6 +51,10 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;                       // never cache writes
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;        // let Firebase/fonts pass through
+  // Video/audio stream in byte ranges (206 responses). Routed through here
+  // they stall partway through, worst on iPhone Safari, so films stopped
+  // before the end. Let the browser talk to the server directly.
+  if (req.destination === 'video' || req.destination === 'audio' || req.headers.has('range')) return;
 
   // HTML: network-first (always try fresh), fall back to cache when offline.
   // {cache:'reload'} bypasses the browser's own HTTP cache so this is a real
