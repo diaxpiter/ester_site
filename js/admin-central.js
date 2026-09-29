@@ -9,6 +9,9 @@
 //  live in it at all. The old Atalhos/Pastas/Rotina tabs were turned into
 //  starter notes (see admin-notes.js's seedNotes); their `links`/`checks`
 //  fields stay in the doc, untouched, so nothing already typed is lost.
+//  The ready messages live there too (`mensagens`: [{ title, text }]),
+//  editable under "Editar dados e mensagens"; {iban}, {mbway}… in the text
+//  are swapped for the fields above when a message is copied.
 // ============================================================
 import {
   doc, getDoc, setDoc
@@ -29,21 +32,20 @@ const DADOS = [
   ['insta',   'Instagram',         '@estephanie.e']
 ];
 
-const BLOCOS = [
-  ['Dados para transferência', d =>
-    'Dados para transferência:\n\nTitular: ' + (d.titular || '—') +
-    '\nIBAN: ' + (d.iban || '—') + '\nMB Way: ' + (d.mbway || '—') +
-    '\n\nAssim que o pagamento entrar envio o recibo por email. Obrigada!'],
-  ['Assinatura de contactos', d =>
-    'ESTER · Produção Audiovisual\n' + (d.whats || '—') + ' · ' + (d.email || '—') +
-    '\n' + (d.site || 'esterprod.com') + ' · ' + (d.insta || '@estephanie.e')],
-  ['Lembrete de pagamento', d =>
+// Starter messages — used until the first save writes a `mensagens` list.
+const MENSAGENS_DEFAULT = [
+  { title: 'Dados para transferência', text:
+    'Dados para transferência:\n\nTitular: {titular}\nIBAN: {iban}\nMB Way: {mbway}' +
+    '\n\nAssim que o pagamento entrar envio o recibo por email. Obrigada!' },
+  { title: 'Assinatura de contactos', text:
+    'ESTER · Produção Audiovisual\n{whats} · {email}\n{site} · {insta}' },
+  { title: 'Lembrete de pagamento', text:
     'Olá! Passo só para lembrar do valor em aberto do último trabalho. ' +
-    'Deixo os dados outra vez para ser mais fácil:\n\nIBAN: ' + (d.iban || '—') +
-    '\nMB Way: ' + (d.mbway || '—') + '\n\nQualquer coisa é só dizer. Obrigada!']
+    'Deixo os dados outra vez para ser mais fácil:\n\nIBAN: {iban}\nMB Way: {mbway}' +
+    '\n\nQualquer coisa é só dizer. Obrigada!' }
 ];
 
-let state = { dados: {} };
+let state = { dados: {}, mensagens: null }; // mensagens: null = never saved, use the defaults
 let editing = false;
 let loaded = false;
 
@@ -51,7 +53,7 @@ let loaded = false;
 async function persist(patch){
   Object.assign(state, patch);
   try{
-    await setDoc(CENTRAL_DOC, { dados: state.dados }, { merge: true });
+    await setDoc(CENTRAL_DOC, { dados: state.dados, mensagens: mensagens() }, { merge: true });
   }catch(err){
     toast('Não foi possível guardar — sem ligação?', true);
   }
@@ -67,6 +69,15 @@ function dadosMap(){
   const out = {};
   DADOS.forEach(([k, , fb]) => { out[k] = dadoValue(k, fb); });
   return out;
+}
+function mensagens(){
+  if(!Array.isArray(state.mensagens)) state.mensagens = MENSAGENS_DEFAULT.map(m => ({ ...m }));
+  return state.mensagens;
+}
+// {iban} → the IBAN, etc. An empty field becomes "—"; unknown {names} stay as typed.
+function fillMensagem(text){
+  const d = dadosMap();
+  return (text || '').replace(/\{(\w+)\}/g, (all, k) => (k in d) ? (d[k] || '—') : all);
 }
 function copy(text){
   const fallback = () => {
@@ -86,7 +97,7 @@ function copy(text){
     navigator.clipboard.writeText(text).then(() => toast('Copiado'), fallback);
   } else fallback();
 }
-// ---------- render: dados + blocos ----------
+// ---------- render: dados + mensagens ----------
 function renderDados(){
   const host = el('centralDados');
   if(editing){
@@ -96,7 +107,17 @@ function renderDados(){
         <span class="central-edit-label">${escapeHtml(label)}</span>
         <input type="text" data-dado="${key}" value="${escapeHtml(dadoValue(key, def))}">
       </label>`).join('');
-    el('centralBlocos').innerHTML = '<p class="panel-empty">As mensagens montam-se sozinhas a partir destes campos.</p>';
+    el('centralBlocos').innerHTML = `
+      <p class="lede central-msg-hint">Escreva ${DADOS.map(([k]) => `<code>{${k}}</code>`).join(' ')} no texto e, ao copiar, entra o valor preenchido acima.</p>
+      ${mensagens().map((m, i) => `
+        <div class="central-msg-edit">
+          <div class="central-msg-head">
+            <input type="text" data-msg-title="${i}" value="${escapeHtml(m.title || '')}" placeholder="Título" aria-label="Título da mensagem">
+            <button type="button" class="btn btn-ghost central-msg-del" data-msg-del="${i}">Apagar</button>
+          </div>
+          <textarea data-msg-text="${i}" rows="6" placeholder="Texto da mensagem" aria-label="Texto da mensagem">${escapeHtml(m.text || '')}</textarea>
+        </div>`).join('')}
+      <button type="button" class="btn btn-ghost" id="centralMsgAdd">+ Nova mensagem</button>`;
     return;
   }
   host.className = '';
@@ -110,19 +131,21 @@ function renderDados(){
         <span class="central-tag">copiar</span>
       </button>`;
   }).join('');
-  el('centralBlocos').innerHTML = BLOCOS.map((b, i) => `
+  const list = mensagens();
+  el('centralBlocos').innerHTML = list.length ? list.map((m, i) => `
     <button type="button" class="central-row" data-copy-bloco="${i}">
       <span class="central-row-text">
         <span class="central-row-label">mensagem</span>
-        <span class="central-row-value">${escapeHtml(b[0])}</span>
+        <span class="central-row-value">${escapeHtml(m.title || 'Sem título')}</span>
+        <span class="central-msg-preview">${escapeHtml(fillMensagem(m.text))}</span>
       </span>
       <span class="central-tag">copiar</span>
-    </button>`).join('');
+    </button>`).join('') : '<p class="panel-empty">Sem mensagens — crie uma em "Editar dados e mensagens".</p>';
 }
 
 function renderAll(){
   renderDados();
-  el('centralEditBtn').textContent = editing ? 'Concluir edição' : 'Editar dados';
+  el('centralEditBtn').textContent = editing ? 'Concluir edição' : 'Editar dados e mensagens';
   el('centralEditBtn').classList.toggle('is-editing', editing);
   document.querySelectorAll('#view-admin-central .central-hide-on-edit')
     .forEach(n => n.classList.toggle('hidden', editing));
@@ -148,7 +171,25 @@ function wire(){
       return;
     }
     const bloco = e.target.closest('[data-copy-bloco]');
-    if(bloco){ copy(BLOCOS[Number(bloco.dataset.copyBloco)][1](dadosMap())); return; }
+    if(bloco){ copy(fillMensagem(mensagens()[Number(bloco.dataset.copyBloco)].text)); return; }
+
+    if(e.target.closest('#centralMsgAdd')){
+      mensagens().push({ title: 'Nova mensagem', text: '' });
+      persist({});
+      renderAll();
+      const titles = el('centralBlocos').querySelectorAll('[data-msg-title]');
+      titles[titles.length - 1].select();
+      return;
+    }
+    const del = e.target.closest('[data-msg-del]');
+    if(del){
+      const i = Number(del.dataset.msgDel);
+      if(!confirm(`Apagar a mensagem "${mensagens()[i].title || 'Sem título'}"?`)) return;
+      mensagens().splice(i, 1);
+      persist({});
+      renderAll();
+      return;
+    }
 
     if(e.target.closest('#centralEditBtn')){
       editing = !editing;
@@ -157,11 +198,23 @@ function wire(){
     }
   });
 
-  // Data edits save on blur (one write per field, not per keystroke).
+  // Edits save on blur (one write per field, not per keystroke).
   root.addEventListener('change', (e) => {
     const dado = e.target.closest('[data-dado]');
     if(dado){
       state.dados[dado.dataset.dado] = dado.value.trim();
+      persist({});
+      return;
+    }
+    const title = e.target.closest('[data-msg-title]');
+    if(title){
+      mensagens()[Number(title.dataset.msgTitle)].title = title.value.trim();
+      persist({});
+      return;
+    }
+    const text = e.target.closest('[data-msg-text]');
+    if(text){
+      mensagens()[Number(text.dataset.msgText)].text = text.value;
       persist({});
     }
   });
@@ -184,7 +237,8 @@ export async function loadCentral(tab = 'dados'){
     loaded = true;
     try{
       const snap = await getDoc(CENTRAL_DOC);
-      if(snap.exists()) state = { dados: (snap.data() || {}).dados || {} };
+      const data = snap.exists() ? (snap.data() || {}) : {};
+      state = { dados: data.dados || {}, mensagens: Array.isArray(data.mensagens) ? data.mensagens : null };
     }catch(err){
       toast('Não foi possível carregar a Central — a mostrar o que há.', true);
     }

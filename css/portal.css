@@ -783,6 +783,23 @@
     transition:border-color 0.25s ease;
   }
   .central-edit-row input:focus{outline:none;border-color:var(--off-white);box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.18);}
+  /* Copiar: ready messages — a 2-line preview on the row, title + text when editing */
+  .central-msg-preview{
+    color:var(--gray);font-size:12px;line-height:1.45;white-space:pre-line;word-break:normal;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .central-msg-hint{margin-bottom:18px;}
+  .central-msg-hint code{font-size:12px;background:rgba(var(--off-white-rgb),0.08);padding:1px 5px;border-radius:3px;}
+  .central-msg-edit{display:flex;flex-direction:column;gap:8px;margin-bottom:22px;}
+  .central-msg-head{display:flex;gap:10px;align-items:center;}
+  .central-msg-edit input,.central-msg-edit textarea{
+    background:transparent;border:1px solid var(--line);color:var(--off-white);
+    padding:11px 13px;border-radius:2px;font-family:'Inter',sans-serif;font-size:14px;width:100%;
+    line-height:1.5;transition:border-color 0.25s ease;
+  }
+  .central-msg-edit textarea{resize:vertical;min-height:130px;}
+  .central-msg-edit input:focus,.central-msg-edit textarea:focus{outline:none;border-color:var(--off-white);box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.18);}
+  .central-msg-del{flex-shrink:0;}
   #centralEditBtn.is-editing{background:var(--off-white);color:var(--black);border-color:var(--off-white);opacity:1;}
 
   @media(max-width:520px){
