@@ -80,51 +80,100 @@ export function waReminderHref(r){
 // ≤5-day urgent ones below) — "quanto de receita vou ter naquele mês",
 // with ‹ › to browse other months. Cached per loadDebts() call; the arrows
 // just re-filter it, no extra Firestore reads.
+// Overdue money counts at its real value, fine included, inside "Para
+// receber" — it's still to be received, just late. The current month also
+// carries what's still unpaid from earlier months, so nothing overdue drops
+// out of sight when the month turns. Pontual jobs are never chased (see
+// fetchOutstanding), so no fine is counted on them.
+// Each card opens a breakdown below the grid: client · date · value.
 const MONTH_NAMES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let debtsMonthCursor = null; // { y, m } (m: 0–11); starts at the current month
 let debtsAllRows = [];
+let debtsOpenCard = null; // 'received' | 'toReceive' | 'total' | null
+let debtsCardRows = {};   // rows behind each card, for the breakdown
+const monthFine = r => (r.pontual || r.paid || daysUntil(r.iso) >= 0) ? 0 : lateFine(r.amount);
 function renderDebtsMonthSummary(){
   const { y, m } = debtsMonthCursor;
   document.getElementById('debtsMonthLabel').textContent = `${MONTH_NAMES_PT[m]} ${y}`;
   const prefix = `${y}-${String(m + 1).padStart(2, '0')}`;
+  const now = new Date();
+  const isCurrentMonth = y === now.getFullYear() && m === now.getMonth();
   const monthRows = debtsAllRows.filter(r => r.iso.startsWith(prefix));
+  const carriedRows = isCurrentMonth ? debtsAllRows.filter(r => !r.paid && r.iso < prefix) : [];
   const grid = document.getElementById('debtsMonthGrid');
-  if(!monthRows.length){
+  if(!monthRows.length && !carriedRows.length){
     grid.innerHTML = '<p class="panel-empty">Nenhum pagamento agendado neste mês.</p>';
+    debtsCardRows = {};
+    renderDebtsMonthDetail();
     return;
   }
   const paidRows = monthRows.filter(r => r.paid);
-  const pendingRows = monthRows.filter(r => !r.paid);
-  const overdueRows = pendingRows.filter(r => daysUntil(r.iso) < 0);
-  const upcomingRows = pendingRows.filter(r => daysUntil(r.iso) >= 0);
-  const paidTotal = paidRows.reduce((s, r) => s + r.amount, 0);
-  const overdueTotal = overdueRows.reduce((s, r) => s + r.amount, 0);
-  const upcomingTotal = upcomingRows.reduce((s, r) => s + r.amount, 0);
-  const grandTotal = paidTotal + overdueTotal + upcomingTotal;
+  const toReceiveRows = carriedRows.concat(monthRows.filter(r => !r.paid)); // oldest first
+  const sum = rows => rows.reduce((s, r) => s + r.amount + monthFine(r), 0);
+  const overdueRows = toReceiveRows.filter(r => daysUntil(r.iso) < 0);
+  const fineTotal = overdueRows.reduce((s, r) => s + monthFine(r), 0);
+  const paidTotal = sum(paidRows);
+  const toReceive = sum(toReceiveRows);
   const pago = n => `${n} pagamento${n === 1 ? '' : 's'}`;
-  grid.innerHTML = `
-    <div class="stat-card is-received">
-      <div class="stat-num">${money.format(paidTotal)}</div>
-      <div class="stat-label">Recebido</div>
-      <div class="stat-sub">${pago(paidRows.length)}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num">${money.format(upcomingTotal)}</div>
-      <div class="stat-label">Para receber</div>
-      <div class="stat-sub">${pago(upcomingRows.length)}</div>
-    </div>
-    <div class="stat-card ${overdueRows.length ? 'is-alert' : ''}">
-      <div class="stat-num">${money.format(overdueTotal)}</div>
-      <div class="stat-label">Em atraso</div>
-      <div class="stat-sub">${pago(overdueRows.length)}</div>
-    </div>
-    <div class="stat-card is-total">
-      <div class="stat-num">${money.format(grandTotal)}</div>
-      <div class="stat-label">Total</div>
-      <div class="stat-sub">${pago(monthRows.length)} no mês</div>
-    </div>
-  `;
+  const toReceiveSub = [
+    pago(toReceiveRows.length),
+    overdueRows.length ? `${overdueRows.length} em atraso` : '',
+    fineTotal ? `inclui ${money.format(fineTotal)} de multa` : ''
+  ].filter(Boolean).join(' · ');
+  debtsCardRows = {
+    received: paidRows,
+    toReceive: toReceiveRows,
+    total: paidRows.concat(toReceiveRows).sort((a, b) => (a.iso < b.iso ? -1 : 1))
+  };
+  const card = (key, cls, total, label, sub) => `
+    <div class="stat-card ${cls} ${debtsOpenCard === key ? 'is-open' : ''}" data-card="${key}"
+         role="button" tabindex="0" aria-expanded="${debtsOpenCard === key}" aria-controls="debtsMonthDetail">
+      <div class="stat-num">${money.format(total)}</div>
+      <div class="stat-label">${label}</div>
+      <div class="stat-sub">${sub}</div>
+    </div>`;
+  grid.innerHTML =
+    card('received', 'is-received', paidTotal, 'Recebido', pago(paidRows.length)) +
+    card('toReceive', overdueRows.length ? 'is-alert' : '', toReceive, 'Para receber', toReceiveSub) +
+    card('total', 'is-total', paidTotal + toReceive, 'Total',
+      `${pago(debtsCardRows.total.length)}${carriedRows.length ? ', com atrasos anteriores' : ' no mês'}`);
+  renderDebtsMonthDetail();
 }
+function renderDebtsMonthDetail(){
+  const el = document.getElementById('debtsMonthDetail');
+  const rows = debtsOpenCard && debtsCardRows[debtsOpenCard];
+  if(!rows){ el.innerHTML = ''; el.hidden = true; return; }
+  el.hidden = false;
+  if(!rows.length){ el.innerHTML = '<p class="panel-empty">Nenhum pagamento.</p>'; return; }
+  el.innerHTML = rows.map(r => {
+    const fine = monthFine(r);
+    const late = !r.paid && daysUntil(r.iso) < 0;
+    const status = r.paid ? 'pago' : late ? 'em atraso' : 'por receber';
+    const fineNote = fine ? ` · ${money.format(r.amount)} + ${money.format(fine)} de multa` : '';
+    return `
+      <div class="fin-ledger-row">
+        <span class="fin-date">${formatDatePt(r.iso)}</span>
+        <span>
+          <span class="fin-cli">${escapeHtml(r.clientName)}</span>
+          <br><span class="fin-note">${escapeHtml(r.project)} · <span class="debts-detail-status ${r.paid ? 'paid' : late ? 'late' : ''}">${status}</span>${fineNote}</span>
+        </span>
+        <span class="fin-amt">${r.amount ? money.format(r.amount + fine) : '—'}</span>
+        <span></span>
+      </div>`;
+  }).join('');
+}
+function toggleDebtsCard(e){
+  const c = e.target.closest('.stat-card[data-card]');
+  if(!c) return;
+  if(e.type === 'keydown'){
+    if(e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+  }
+  debtsOpenCard = debtsOpenCard === c.dataset.card ? null : c.dataset.card;
+  renderDebtsMonthSummary();
+}
+document.getElementById('debtsMonthGrid').addEventListener('click', toggleDebtsCard);
+document.getElementById('debtsMonthGrid').addEventListener('keydown', toggleDebtsCard);
 document.getElementById('debtsMonthPrev').addEventListener('click', () => {
   if(!debtsMonthCursor) return;
   debtsMonthCursor.m--;
@@ -145,6 +194,7 @@ export async function loadDebts(){
   const totalEl = document.getElementById('debtsTotal');
   totalEl.textContent = '';
   document.getElementById('debtsMonthGrid').innerHTML = '';
+  document.getElementById('debtsMonthDetail').innerHTML = '';
   listEl.innerHTML = '<p class="panel-empty"><span class="loading-dot"></span></p>';
   let allRows;
   try{ allRows = await fetchAllInstallments(); }
