@@ -2,7 +2,8 @@
 // Goal: make the portal installable + fast, WITHOUT breaking Firebase.
 // Strategy: only touch same-origin GET requests. Firestore/Auth/Google Fonts
 // (cross-origin) pass straight through, untouched, so live data is never stale.
-const CACHE = 'ester-v36';
+const CACHE = 'ester-v38';
+const NAV_TIMEOUT_MS = 4000;
 const SHELL = [
   'portal.html',
   'index.html',
@@ -59,12 +60,16 @@ self.addEventListener('fetch', (e) => {
   // HTML: network-first (always try fresh), fall back to cache when offline.
   // {cache:'reload'} bypasses the browser's own HTTP cache so this is a real
   // revalidation, not just a replay of whatever was last fetched.
+  // A signal that crawls without ever failing left the home-screen app on a
+  // blank screen, so after NAV_TIMEOUT_MS the saved copy is shown instead
+  // (the fresh page still lands in the cache for next time).
   if (req.mode === 'navigate' || req.destination === 'document') {
-    e.respondWith(
-      fetch(req, { cache: 'reload' })
-        .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; })
-        .catch(() => caches.match(req).then((r) => r || caches.match(/portal|\/notas/.test(url.pathname) ? 'portal.html' : 'index.html')))
-    );
+    const cached = () => caches.match(req).then((r) => r || caches.match(/portal|\/notas/.test(url.pathname) ? 'portal.html' : 'index.html'));
+    const network = fetch(req, { cache: 'reload' })
+      .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; });
+    const slow = new Promise((resolve) => setTimeout(() => cached().then((r) => { if (r) resolve(r); }), NAV_TIMEOUT_MS));
+    e.respondWith(Promise.race([network.catch(cached), slow]));
+    e.waitUntil(network.catch(() => {}));
     return;
   }
 
