@@ -25,12 +25,16 @@
 //  see seedNotes() below.
 // ============================================================
 import {
-  doc, getDoc, setDoc, deleteDoc, collection, getDocs
+  doc, getDoc, setDoc, deleteDoc, collection, getDocs, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db, escapeHtml, toast, askConfirm } from './core.js';
 
 const NOTES = collection(db, "notes");
 const SAVE_DELAY_MS = 700;
+// A copy of each save until Firestore confirms it. Closing the phone app
+// on a weak signal can kill a save still on its way; the next launch
+// sends it again from here (see restoreBackups).
+const BACKUP_KEY = 'notasPorGuardar';
 
 let notes = [];          // [{ id, title, blocks, pinned, createdAt, updatedAt }]
 let currentId = null;
@@ -197,6 +201,66 @@ async function fetchNotes(){
   const snap = await getDocs(NOTES);
   return snap.docs.map(d => normalize({ id: d.id, ...d.data() }));
 }
+function readBackups(){
+  try{ return JSON.parse(localStorage.getItem(BACKUP_KEY) || '{}') || {}; }catch(e){ return {}; }
+}
+function writeBackups(b){
+  try{
+    if(Object.keys(b).length) localStorage.setItem(BACKUP_KEY, JSON.stringify(b));
+    else localStorage.removeItem(BACKUP_KEY);
+  }catch(e){ /* private mode / storage full: nothing to fall back on */ }
+}
+// Saves that never reached Firestore: put them back, unless the note there
+// has been edited since (then that newer version wins).
+async function restoreBackups(){
+  const backups = readBackups();
+  for(const [id, data] of Object.entries(backups)){
+    const i = notes.findIndex(n => n.id === id);
+    if(i >= 0 && notes[i].updatedAt >= data.updatedAt){ delete backups[id]; continue; }
+    const n = normalize({ id, ...data });
+    if(i >= 0) notes[i] = n; else notes.push(n);
+    try{ await setDoc(doc(NOTES, id), data); delete backups[id]; }catch(e){ /* try again next launch */ }
+  }
+  writeBackups(backups);
+}
+// Live updates, so the phone app (which stays open in the background for
+// days) shows what was written on the computer, and a later save on the
+// phone doesn't overwrite it with the stale copy. A note with unsaved typing
+// here is left alone; its own save follows.
+function listen(){
+  onSnapshot(NOTES, (snap) => {
+    let listChanged = false, openChanged = false;
+    snap.docChanges().forEach(ch => {
+      if(ch.doc.metadata.hasPendingWrites) return; // our own save, echoed back
+      const id = ch.doc.id;
+      if(id === dirtyId) return;
+      const i = notes.findIndex(n => n.id === id);
+      if(ch.type === 'removed'){
+        if(i < 0) return;
+        notes.splice(i, 1);
+        listChanged = true;
+        if(id === currentId){ currentId = null; openChanged = true; }
+        return;
+      }
+      const remote = normalize({ id, ...ch.doc.data() });
+      if(i >= 0 && JSON.stringify(notes[i]) === JSON.stringify(remote)) return;
+      if(i >= 0) notes[i] = remote; else notes.push(remote);
+      listChanged = true;
+      if(id === currentId) openChanged = true;
+    });
+    if(listChanged) renderList();
+    if(openChanged) rerenderOpenNote();
+  }, () => { /* offline: the next snapshot catches up */ });
+}
+// Redraw the open note, keeping the caret where it was if it was in it.
+function rerenderOpenNote(){
+  syncPanes();
+  const a = document.activeElement;
+  let focus;
+  if(a && a.id === 'notesTitle') focus = { title: true, offset: caretOffset(a) };
+  else if(a && a.classList.contains('nb-text') && el('notesBody').contains(a)) focus = { i: Number(a.dataset.i), offset: caretOffset(a) };
+  renderEditor(focus);
+}
 function normalize(n){
   const blocks = Array.isArray(n.blocks) && n.blocks.length ? n.blocks : [P('')];
   return {
@@ -227,8 +291,13 @@ async function flushSave(){
     const html = cleanInline(b.html);
     return { t: b.t, html, text: htmlToText(html), done: !!b.done };
   });
+  const backups = readBackups();
+  backups[id] = rest;
+  writeBackups(backups);
   try{
     await setDoc(doc(NOTES, id), rest);
+    const after = readBackups();
+    if(after[id] && after[id].updatedAt === rest.updatedAt){ delete after[id]; writeBackups(after); }
   }catch(err){
     dirtyId = id;
     toast('Não foi possível guardar a nota — sem ligação?', true);
@@ -419,6 +488,8 @@ async function deleteCurrent(){
   if(!ok) return;
   clearTimeout(saveTimer);
   if(dirtyId === n.id) dirtyId = null;
+  const backups = readBackups();
+  if(backups[n.id]){ delete backups[n.id]; writeBackups(backups); } // or the next launch would bring it back
   try{
     await deleteDoc(doc(NOTES, n.id));
   }catch(err){
@@ -449,21 +520,32 @@ function wire(){
     renderList();
   });
   // Toolbar buttons must not steal focus (or the selection) from the line
-  // being edited — pointerdown covers touch, mousedown older browsers.
-  el('notesEditorPane').querySelectorAll('[data-note-tool], [data-note-fmt]').forEach(b => {
-    b.addEventListener('pointerdown', e => e.preventDefault());
+  // being edited, so their pointerdown is cancelled. WebKit then drops the
+  // click that would follow a TAP, so on the iPhone the buttons did nothing;
+  // the action runs on pointerdown instead. click still covers the keyboard
+  // (Enter/Space on a focused button); one right after a pointerdown is the
+  // same press, so it's skipped.
+  const onPress = (b, act) => {
+    let pressedAt = 0;
+    b.addEventListener('pointerdown', e => {
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      pressedAt = Date.now();
+      act();
+    });
     b.addEventListener('mousedown', e => e.preventDefault());
-  });
+    b.addEventListener('click', () => { if(Date.now() - pressedAt > 700) act(); });
+  };
   el('notesEditorPane').querySelectorAll('[data-note-tool]').forEach(b => {
-    b.addEventListener('click', () => applyTool(b.dataset.noteTool));
+    onPress(b, () => applyTool(b.dataset.noteTool));
   });
   // Bold / italic / underline on the selection (or on what's typed next).
   // styleWithCSS off so browsers write <b>/<i>/<u>, not <span style>.
   try{ document.execCommand('styleWithCSS', false, false); }catch(e){}
   const fmtButtons = el('notesEditorPane').querySelectorAll('[data-note-fmt]');
-  fmtButtons.forEach(b => b.addEventListener('click', () => {
+  fmtButtons.forEach(b => onPress(b, () => {
     const sel = window.getSelection();
-    if(!sel.rangeCount || !sel.anchorNode || !sel.anchorNode.parentElement || !sel.anchorNode.parentElement.closest('#notesBody .nb-text')){
+    if(!sel.rangeCount || !sel.anchorNode || !el('notesBody').contains(sel.anchorNode)){
       toast('Toque primeiro numa linha da nota');
       return;
     }
@@ -535,7 +617,9 @@ export async function loadNotes(){
     try{
       notes = await fetchNotes();
       if(!notes.length) notes = await seedNotes();
+      await restoreBackups();
       loaded = true;
+      listen();
     }catch(err){
       el('notesList').innerHTML = '<p class="notes-list-empty">Não foi possível carregar as notas.</p>';
       return;
