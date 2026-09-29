@@ -31,6 +31,16 @@
     min-height:100vh;
     color-scheme:dark;
     overflow-x:hidden;
+    /* The home-screen app draws under the translucent iPhone status bar
+       (and the viewport is viewport-fit=cover), so keep clear of the clock /
+       notch, the home bar and, turned sideways, the notch's side. env() is
+       0 wherever there's nothing to avoid. */
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  /* What scrolls up under the status bar is hidden behind a solid strip. */
+  body::after{
+    content:"";position:fixed;left:0;right:0;top:0;z-index:900;pointer-events:none;
+    height:env(safe-area-inset-top);background:var(--black);
   }
   /* film grain overlay, matching index.html */
   body::before{
@@ -667,14 +677,14 @@
 
   /* floating save button — always reachable while editing a client/project */
   .floating-save{
-    position:fixed;right:24px;bottom:24px;z-index:500;
+    position:fixed;right:24px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:500;
     display:none;box-shadow:0 8px 28px rgba(0,0,0,0.45);
   }
   .floating-save.show{display:inline-flex;}
 
   /* toast confirmation (shown near the top, where you're editing) */
   .toast{
-    position:fixed;left:50%;top:86px;z-index:1200;
+    position:fixed;left:50%;top:calc(86px + env(safe-area-inset-top));z-index:1200;
     transform:translateX(-50%) translateY(-16px);
     background:var(--off-white);color:var(--black);
     padding:12px 22px;border-radius:999px;font-size:13px;font-weight:600;
@@ -815,7 +825,7 @@
   .notes-pin{font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#f0a24b;border:1px solid rgba(240,162,75,0.5);border-radius:999px;padding:1px 6px;margin-right:6px;vertical-align:2px;}
 
   .notes-editor-pane{display:flex;flex-direction:column;min-width:0;padding:0 22px 28px;}
-  .notes-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:12px 0;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--black);z-index:1;}
+  .notes-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:12px 0;border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top);background:var(--black);z-index:1;}
   .notes-toolbar-spacer{flex:1;}
   .notes-tool,.notes-back{
     background:transparent;border:1px solid var(--line);color:var(--off-white);border-radius:6px;
