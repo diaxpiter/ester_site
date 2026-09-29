@@ -359,11 +359,12 @@
   .stat-card.is-alert .stat-num{color:#e5573f;}
   .stat-card.is-received .stat-num{color:#5fbf7a;}
   .stat-card.is-total{border-color:rgba(var(--off-white-rgb),0.32);}
-  /* "A receber" monthly summary cards are informational, not links — no pointer/hover. */
-  #debtsMonthGrid .stat-card{cursor:default;}
-  #debtsMonthGrid .stat-card:hover{background:none;border-color:var(--line);}
-  #debtsMonthGrid .stat-card.is-alert:hover{border-color:rgba(229,87,63,0.5);}
-  #debtsMonthGrid .stat-card.is-total:hover{border-color:rgba(var(--off-white-rgb),0.32);}
+  /* "A receber" monthly summary cards open their breakdown below the grid. */
+  #debtsMonthGrid .stat-card:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(var(--off-white-rgb),0.18);}
+  #debtsMonthGrid .stat-card.is-open{background:rgba(var(--off-white-rgb),0.06);border-color:var(--off-white);}
+  .debts-month-detail{margin-top:16px;border:1px solid var(--line);border-radius:6px;padding:4px 20px;}
+  .debts-detail-status.paid{color:#5fbf7a;}
+  .debts-detail-status.late{color:#e5573f;}
 
   /* admin: Financeiro "Receita" cards — informational only, no links */
   #finRevenueGrid .stat-card{cursor:default;}
@@ -562,6 +563,8 @@
   @media(max-width:700px){.fin-filters{grid-template-columns:1fr 1fr;}.fin-filters .btn{grid-column:1 / -1;}}
   .fin-subtotal{font-size:13px;color:var(--gray);margin-bottom:16px;}
   .fin-subtotal strong{color:var(--off-white);font-weight:600;}
+  /* A receber: the urgent-list line sits right under the month cards — give it room. */
+  #debtsTotal{margin-top:40px;}
 
   /* Ledger paginated 10/page: pages sit side by side and scroll horizontally. */
   .fin-scroll{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
