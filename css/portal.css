@@ -816,6 +816,144 @@
     .central-edit{grid-template-columns:1fr;}
   }
 
+  /* ---------- Timeline (js/admin-ciclos.js) ----------
+     One row per client, one block per contract month. Colours come from
+     the portal tokens, so it follows the light/dark toggle too. */
+  .cc{
+    --cc-amber:#f0a24b;
+    --cc-late:var(--red);
+    --cc-late-soft:rgba(229,87,63,0.12);
+    --cc-clip:rgba(var(--off-white-rgb),0.16);
+    --cc-future:rgba(var(--off-white-rgb),0.4);
+    --cc-prod-a:rgba(var(--off-white-rgb),0.55);
+    --cc-prod-b:rgba(var(--off-white-rgb),0.3);
+  }
+  .cc .btn-mini.is-primary{background:var(--off-white);color:var(--black);border-color:var(--off-white);}
+  .cc .btn-mini.is-primary:hover{opacity:0.85;}
+  .cc [hidden]{display:none !important;}
+
+  .cc-resumo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:26px;}
+  .cc-fig{padding:16px 18px 14px;border-left:1px solid var(--line);min-width:0;}
+  .cc-fig:first-child{border-left:0;padding-left:0;}
+  .cc-fig b{display:block;font:italic 400 30px/1.05 'League Spartan',sans-serif;font-variant-numeric:tabular-nums;}
+  .cc-fig span{display:block;color:var(--gray);font-size:13px;margin-top:4px;}
+  .cc-fig.is-alerta b{color:var(--cc-late);}
+  @media (max-width:760px){
+    .cc-resumo{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .cc-fig:nth-child(3){border-left:0;padding-left:0;}
+    .cc-fig:nth-child(n+3){border-top:1px solid var(--line);}
+    .cc-fig b{font-size:26px;}
+  }
+
+  .cc-toolbar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:12px;}
+  .cc-novo{margin-left:auto;}
+  .cc-group{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;}
+  .cc-group button{border:0;background:none;padding:8px 13px;cursor:pointer;font:500 13px 'Inter',sans-serif;color:var(--off-white);}
+  .cc-group button+button{border-left:1px solid var(--line);}
+  .cc-group button:hover{background:rgba(var(--off-white-rgb),0.06);}
+  .cc-group button[aria-pressed="true"]{background:var(--off-white);color:var(--black);}
+  .cc-range{font-size:13px;color:var(--gray);min-width:9ch;text-align:center;}
+  .cc-chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--gray);cursor:pointer;}
+
+  .cc-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:6px;}
+  .cc-tl{min-width:900px;}
+  .cc-tl.is-seis{min-width:1500px;}
+  .cc-row{display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--line);}
+  .cc-row:last-child{border-bottom:0;}
+  .cc-head{position:sticky;left:0;z-index:4;background:var(--black);border:0;border-right:1px solid var(--line);padding:9px 14px;text-align:left;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0;color:var(--off-white);font-family:'Inter',sans-serif;}
+  .cc-head:hover .cc-nome{text-decoration:underline;text-underline-offset:3px;}
+  .cc-nome{font:500 15px/1.2 'League Spartan',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cc-sub{font-size:12px;line-height:1.35;color:var(--gray);}
+  .cc-pill{align-self:flex-start;font-size:10px;line-height:1;text-transform:uppercase;letter-spacing:0.06em;color:var(--cc-late);border:1px solid var(--cc-late);border-radius:999px;padding:4px 7px 3px;margin-top:3px;white-space:nowrap;}
+  .cc-row.is-ruler .cc-head{cursor:default;font-size:12px;color:var(--gray);text-transform:uppercase;letter-spacing:0.1em;}
+  @media (max-width:640px){.cc-row{grid-template-columns:132px 1fr;}.cc-head{padding:8px 10px;}.cc-nome{font-size:14px;white-space:normal;}}
+  .cc-lane{position:relative;height:62px;overflow:hidden;}
+  .cc-row.is-ruler .cc-lane{height:46px;}
+  .cc-gl{position:absolute;top:0;bottom:0;width:1px;background:var(--line);}
+  .cc-mlab{position:absolute;top:6px;padding-left:7px;font:500 13px 'League Spartan',sans-serif;white-space:nowrap;}
+  .cc-tick{position:absolute;bottom:0;width:1px;height:7px;background:var(--cc-future);}
+  .cc-tlab{position:absolute;bottom:9px;transform:translateX(-50%);font-size:11px;color:var(--gray);font-variant-numeric:tabular-nums;}
+  .cc-now{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--off-white);z-index:3;pointer-events:none;}
+  .cc-nowlab{position:absolute;bottom:4px;transform:translateX(-50%);background:var(--off-white);color:var(--black);font-size:11px;font-weight:600;line-height:1;padding:4px 6px 3px;border-radius:3px;z-index:4;white-space:nowrap;}
+
+  .cc-clip{position:absolute;top:9px;height:44px;border:0;border-radius:4px;background:var(--cc-clip);color:var(--off-white);padding:0 9px;text-align:left;cursor:pointer;display:flex;flex-direction:column;justify-content:center;overflow:hidden;z-index:1;font-family:'Inter',sans-serif;}
+  .cc-c1{font:500 13px/1.15 'League Spartan',sans-serif;white-space:nowrap;}
+  .cc-c2{font-size:11.5px;line-height:1.2;opacity:0.8;white-space:nowrap;margin-bottom:5px;}
+  .cc-clip.st-atraso{background:var(--cc-late-soft);color:var(--cc-late);box-shadow:inset 0 0 0 1.5px var(--cc-late);}
+  .cc-clip.st-futuro,.cc-clip.st-a-vencer{background:transparent;color:var(--gray);border:1px dashed var(--cc-future);}
+  .cc-clip.st-hoje{background:transparent;color:var(--off-white);border:1.5px dashed var(--cc-amber);}
+  .cc-clip:hover{filter:brightness(1.15);}
+  .cc-blk{position:absolute;top:9px;height:44px;border-radius:4px;pointer-events:none;z-index:2;opacity:0.42;
+    background:repeating-linear-gradient(135deg,var(--cc-late) 0 1.5px,transparent 1.5px 7px);}
+  .cc-blk.is-soft{opacity:0.5;background:repeating-linear-gradient(135deg,var(--cc-prod-a) 0 1.5px,transparent 1.5px 7px);}
+  .cc-pay{position:absolute;top:4px;width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);background:var(--cc-amber);box-shadow:0 0 0 2px var(--black);z-index:3;pointer-events:none;}
+  .cc-pay.is-aberto{background:var(--black);box-shadow:inset 0 0 0 2px var(--cc-amber),0 0 0 2px var(--black);}
+  .cc-pay.is-falta{background:var(--black);box-shadow:inset 0 0 0 2px var(--cc-late),0 0 0 2px var(--black);}
+  .cc-prod{position:absolute;top:44px;height:5px;z-index:2;pointer-events:none;}
+  .cc-prod.is-work{background:var(--cc-prod-a);}
+  .cc-prod.is-rev{background:var(--cc-prod-b);}
+  .cc-prod.is-over{background:var(--cc-late);}
+  .cc-rec{position:absolute;top:42px;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:#f3f2ee;box-shadow:0 0 0 2px #0a0a0a;z-index:3;pointer-events:none;}
+  .cc-del{position:absolute;top:39px;width:2px;height:14px;margin-left:-1px;background:var(--cc-amber);z-index:3;pointer-events:none;}
+
+  .cc-vazio{padding:40px 20px;text-align:center;color:var(--gray);}
+  .cc-vazio p{margin:0 0 14px;}
+
+  .cc-legenda{display:flex;flex-wrap:wrap;gap:8px 20px;margin:12px 0 10px;font-size:13px;color:var(--gray);}
+  .cc-legenda span{display:inline-flex;align-items:center;gap:7px;}
+  .cc-sw{display:inline-block;width:22px;height:12px;border-radius:2px;position:relative;flex:none;}
+  .cc-sw.is-pago{background:var(--cc-clip);}
+  .cc-sw.is-fut{border:1px dashed var(--cc-future);}
+  .cc-sw.is-atr{background:var(--cc-late-soft);box-shadow:inset 0 0 0 1.5px var(--cc-late);}
+  .cc-sw.is-hach{background:repeating-linear-gradient(135deg,var(--cc-late) 0 1.5px,transparent 1.5px 6px);opacity:0.7;}
+  .cc-sw.is-dia{width:9px;height:9px;transform:rotate(45deg);background:var(--cc-amber);}
+  .cc-sw.is-dia.is-o{background:none;box-shadow:inset 0 0 0 2px var(--cc-amber);}
+  .cc-sw.is-prd{height:5px;width:26px;background:linear-gradient(90deg,var(--cc-prod-a) 0 65%,var(--cc-prod-b) 65%);}
+  .cc-sw.is-rc{width:9px;height:9px;border-radius:50%;background:#f3f2ee;box-shadow:0 0 0 2px #0a0a0a;}
+
+  .cc-atencao{list-style:none;margin:0;padding:0;border-top:1px solid var(--line);}
+  .cc-atencao li{display:flex;gap:14px;align-items:center;padding:11px 0 11px 14px;border-bottom:1px solid var(--line);position:relative;font-size:14px;line-height:1.5;}
+  .cc-atencao li::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:2px;background:var(--cc-future);}
+  .cc-atencao li.t-late::before{background:var(--cc-late);}
+  .cc-atencao li.t-pay::before{background:var(--cc-amber);}
+  .cc-atencao li p{margin:0;flex:1;}
+  .cc-atencao li strong{font-weight:600;}
+  .cc-ok{color:var(--gray);padding:12px 0;font-size:14px;}
+  .cc-link{background:none;border:0;padding:4px 0;cursor:pointer;font:500 13px 'Inter',sans-serif;color:var(--off-white);text-decoration:underline;text-underline-offset:3px;white-space:nowrap;}
+  .cc-link:hover{opacity:0.75;}
+  .cc-rodape{margin-top:28px;font-size:13px;}
+
+  /* dialogs: ficha, formulário, copiar/importar */
+  .cc-dlg{margin:auto;border:1px solid var(--line);border-radius:6px;background:var(--black);color:var(--off-white);width:calc(100% - 28px);max-width:680px;padding:0;max-height:calc(100% - 28px);}
+  .cc-dlg::backdrop{background:rgba(0,0,0,0.62);}
+  .cc-dlg-h{padding:24px 24px 6px;}
+  .cc-dlg-h h3{margin:0;font-size:24px;font-style:italic;font-weight:400;}
+  .cc-dlg-h p{margin:6px 0 0;color:var(--gray);font-size:14px;line-height:1.55;}
+  .cc-dlg-b{padding:10px 24px 4px;}
+  .cc-dlg-f{padding:14px 24px 22px;display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;border-top:1px solid var(--line);margin-top:14px;}
+  .cc-esq{margin-right:auto;}
+  .cc-perigo{color:var(--red);border-color:var(--red);}
+  .cc-hint{display:block;color:var(--gray);font-size:12px;margin-top:6px;}
+  .cc-dlg .field textarea{resize:vertical;}
+  .cc-dados-txt{width:100%;background:transparent;border:1px solid var(--line);color:var(--off-white);border-radius:2px;padding:10px 12px;font:12.5px/1.45 ui-monospace,Menlo,Consolas,monospace;resize:vertical;}
+  .cc-divida{background:var(--cc-late-soft);border-left:3px solid var(--cc-late);padding:10px 14px;margin:8px 0 14px;font-size:14px;line-height:1.5;border-radius:0 4px 4px 0;}
+  .cc-cy{border-top:1px solid var(--line);padding:14px 0 4px;}
+  .cc-cy-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:10px;}
+  .cc-cy-h strong{font:500 16px 'League Spartan',sans-serif;}
+  .cc-per{color:var(--gray);font-size:13.5px;}
+  .cc-badge{font-size:11px;line-height:1;padding:5px 9px 4px;border-radius:999px;border:1px solid var(--line);color:var(--gray);margin-left:auto;}
+  .cc-badge.st-atraso{color:var(--cc-late);border-color:var(--cc-late);}
+  .cc-badge.st-pago,.cc-badge.st-pago-atraso{color:var(--off-white);border-color:var(--off-white);}
+  .cc-cy-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 12px;}
+  @media (max-width:560px){.cc-cy-g{grid-template-columns:1fr;}}
+  .cc-cy-g .field{margin-bottom:8px;min-width:0;}
+  .cc-cy-g .field input{padding:10px 11px;font-size:14px;}
+  .cc-inl{display:flex;gap:6px;align-items:center;}
+  .cc-inl input{flex:1;min-width:0;}
+  .cc-inl .btn-mini{padding:8px 11px;white-space:nowrap;}
+  .cc-calc{font-size:13.5px;color:var(--gray);margin:2px 0 8px;}
+  .cc-aviso{font-size:13.5px;color:var(--cc-late);margin:0 0 8px;}
+
   /* ---------- Notas (js/admin-notes.js) ----------
      List pane + editor pane side by side; on a phone only one shows at a
      time (.is-open = a note is open), like the Notes app. */

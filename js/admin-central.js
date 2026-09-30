@@ -1,7 +1,8 @@
 // ============================================================
-//  ADMIN: CENTRAL — two tabs. "Copiar": one-tap copy for the data that gets
+//  ADMIN: CENTRAL — three tabs. "Copiar": one-tap copy for the data that gets
 //  asked for mid-conversation (IBAN, MB Way, NIF) plus ready-made messages.
 //  "Notas": iPhone-Notes-style notes, rendered by js/admin-notes.js.
+//  "Timeline": each client's monthly cycles, rendered by js/admin-ciclos.js.
 //
 //  The Copiar values live in ONE Firestore doc (dashboard/central), so the
 //  computer and the phone see the same data. Nothing here is client-facing —
@@ -18,6 +19,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db, show, setAdminHash, toast, escapeHtml } from './core.js';
 import { loadNotes } from './admin-notes.js';
+import { loadCiclos } from './admin-ciclos.js';
 
 export const CENTRAL_DOC = doc(db, "dashboard", "central");
 
@@ -220,14 +222,15 @@ function wire(){
   });
 }
 
-// "dados" (Copiar) or "notas". Notas keeps its own URL hash so a refresh
-// mid-note comes back to the notes instead of Copiar.
+// "dados" (Copiar), "notas" or "timeline". Notas and Timeline keep their own
+// URL hash so a refresh comes back to them instead of Copiar.
 function showTab(target){
   const root = el('view-admin-central');
   root.querySelectorAll('[data-central-tab]').forEach(b => b.classList.toggle('is-active', b.dataset.centralTab === target));
   root.querySelectorAll('.central-panel').forEach(p => p.classList.toggle('hidden', p.dataset.centralPanel !== target));
-  setAdminHash(target === 'notas' ? 'notas' : 'central');
+  setAdminHash(target === 'notas' || target === 'timeline' ? target : 'central');
   if(target === 'notas') loadNotes();
+  if(target === 'timeline') loadCiclos();
 }
 
 export async function loadCentral(tab = 'dados'){
