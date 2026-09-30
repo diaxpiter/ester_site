@@ -186,10 +186,11 @@
   </section>
 
   <!-- ===================== ADMIN CENTRAL VIEW ===================== -->
-  <!-- Two tabs: Copiar (data to copy mid-conversation + ready messages, stored
-       in Firestore dashboard/central, rendered by js/admin-central.js) and
+  <!-- Three tabs: Copiar (data to copy mid-conversation + ready messages, stored
+       in Firestore dashboard/central, rendered by js/admin-central.js),
        Notas (iPhone-Notes-style notes with headings and checkboxes, one
-       Firestore doc per note in `notes`, rendered by js/admin-notes.js). -->
+       Firestore doc per note in `notes`, rendered by js/admin-notes.js) and
+       Timeline (each client's monthly cycles, js/admin-ciclos.js). -->
   <section id="view-admin-central" class="hidden">
     <div class="eyebrow">Admin</div>
     <h1 class="page-title">Central.</h1>
@@ -197,6 +198,7 @@
     <div class="subnav-tabs central-tabs">
       <button type="button" class="subnav-tab is-active" data-central-tab="dados">Copiar</button>
       <button type="button" class="subnav-tab" data-central-tab="notas">Notas</button>
+      <button type="button" class="subnav-tab" data-central-tab="timeline">Timeline</button>
     </div>
 
     <!-- ---------- COPIAR ---------- -->
@@ -244,6 +246,51 @@
           <div class="notes-body" id="notesBody"></div>
           <p class="panel-empty hidden" id="notesEmpty">Nenhuma nota ainda. Toque em "+ Nova nota".</p>
         </div>
+      </div>
+    </div>
+
+    <!-- ---------- TIMELINE ---------- -->
+    <!-- Ciclos mensais de cada cliente com pacote mensal, lidos dos projetos
+         (js/admin-ciclos.js; regras em js/ciclos-core.js). -->
+    <div class="central-panel hidden" data-central-panel="timeline">
+      <div class="cc" id="ccRoot">
+        <div class="cc-resumo" id="ccResumo"></div>
+
+        <div class="cc-toolbar">
+          <div class="cc-group">
+            <button type="button" id="ccPrev" aria-label="Mês anterior">‹</button>
+            <button type="button" id="ccHoje">Hoje</button>
+            <button type="button" id="ccNext" aria-label="Próximo mês">›</button>
+          </div>
+          <span class="cc-range" id="ccRange"></span>
+          <div class="cc-group" role="group" aria-label="Período visível">
+            <button type="button" data-cc-jan="3" aria-pressed="true">3 meses</button>
+            <button type="button" data-cc-jan="6" aria-pressed="false">6 meses</button>
+          </div>
+          <label class="cc-chk"><input type="checkbox" id="ccEncerrados"> Mostrar encerrados</label>
+        </div>
+
+        <div class="cc-scroll"><div class="cc-tl" id="ccTl"></div></div>
+
+        <div class="cc-legenda">
+          <span><i class="cc-sw is-pago"></i>Mês pago</span>
+          <span><i class="cc-sw is-fut"></i>Mês ainda por pagar</span>
+          <span><i class="cc-sw is-atr"></i>Mês em atraso</span>
+          <span><i class="cc-sw is-hach"></i>Dias sem pagamento</span>
+          <span><i class="cc-sw is-dia"></i>Pagamento recebido</span>
+          <span><i class="cc-sw is-dia is-o"></i>Pagamento esperado</span>
+          <span><i class="cc-sw is-rc"></i>Gravação</span>
+          <span><i class="cc-sw is-prd"></i>Prazo de entrega e revisões</span>
+        </div>
+
+        <div class="section-divider">
+          <h3>Precisa de atenção</h3>
+          <div id="ccAtencao"></div>
+        </div>
+
+        <!-- Ficha da cliente -->
+        <dialog class="cc-dlg" id="ccDlgFicha" aria-labelledby="ccFichaNome"><div id="ccFicha"></div></dialog>
+
       </div>
     </div>
   </section>

@@ -45,6 +45,7 @@ function routeAdmin(){
   else if(h === 'leads') loadLeads();
   else if(h === 'central') loadCentral();
   else if(h === 'notas') loadCentral('notas');
+  else if(h === 'timeline') loadCentral('timeline');
   else loadAdminList(); // default landing page (fresh login, 'clientes', or any unknown hash)
   setSubnavActive(h);
 }
