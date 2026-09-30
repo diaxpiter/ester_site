@@ -3,20 +3,29 @@
 //  do tempo: meses pagos / por pagar / em atraso, pagamentos, gravação,
 //  prazo de entrega e revisões, mais a lista "Precisa de atenção".
 //
-//  As regras (vencimentos, dias úteis, estados) vivem em js/ciclos-core.js;
-//  aqui só há DOM e Firestore. Os dados ficam num único doc
-//  (dashboard/ciclos → { clientes: [...] }), admin-only em firestore.rules,
-//  para o computador e o telemóvel verem o mesmo. Cada cliente:
-//  { id, nome, mensal, meses, assinatura, pagamento1, notas,
-//    ciclos: [{ pago, gravacao, entrega }] }  — datas 'AAAA-MM-DD'.
+//  Lê os clientes reais (coleção `clients`) sempre que a aba abre: entra
+//  cada cliente não desativado com pelo menos um projeto de pacote mensal.
+//  Cada projeto mensal são 3 meses; renovações (novos projetos) seguem na
+//  mesma linha. Por projeto:
+//    paymentDates[i]  → vencimento do mês i (o mês acaba na véspera do seguinte)
+//    paymentsPaid[i]  → pago ou não (a data real do pagamento não é guardada,
+//                       por isso conta como pago no vencimento)
+//    recordingDates   → gravações de cada mês (recordingSlots diz o mês)
+//    deliveryDates    → entrega do mês = primeira entrega já feita entre a
+//                       última gravação e o fim do mês
+//  É só leitura: pagamentos, gravações e entregas registam-se no projeto
+//  ("Abrir projeto" na ficha). As regras vivem em js/ciclos-core.js.
 // ============================================================
 import {
-  doc, getDoc, setDoc
+  getDocs, getDoc, doc, collection
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { db, toast, escapeAttr } from './core.js';
-import { CFG, P, F, hoje, addDays, diff, addMonthsAnchor, calcularCiclos, estadoTexto } from './ciclos-core.js';
-
-export const CICLOS_DOC = doc(db, "dashboard", "ciclos");
+import {
+  db, toast, escapeAttr, ADMIN_EMAIL, MONTHLY_BATCH_MONTHS, getProjects,
+  isMonthlyWorkflow, projectPaymentDates, projectDeliveryDates, recordingSlots,
+  packPriceNumber, workflowDoneSet
+} from './core.js';
+import { loadAdminEdit, openProject } from './admin-clients.js';
+import { CFG, P, F, hoje, addDays, diff, addMonthsAnchor, addUteis, calcularCiclos, estadoTexto } from './ciclos-core.js';
 
 const MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 const MESL = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -28,61 +37,103 @@ const eur = v => fmtEur.format(+v || 0);
 const dias = n => `${n} ${n === 1 ? 'dia' : 'dias'}`;
 const dm = s => `${s.slice(8, 10)}/${s.slice(5, 7)}`;
 const dmy = s => `${dm(s)}/${s.slice(0, 4)}`;
-const uid = () => Math.random().toString(36).slice(2, 10);
 function firstOfMonth(s, off = 0){ const d = P(s); return F(new Date(d.getFullYear(), d.getMonth() + off, 1, 12)); }
+// Sem data real de pagamento, "pago em <vencimento>" seria inventado.
+const estadoTxt = cy => cy.estado === 'pago' ? 'pago' : estadoTexto(cy);
 
-let clientes = [];
+let linhas = [];   // [{ id, nome, dia, cs: [ciclo + { mensal, projeto, pid, n }], projetos }]
 const view = { janela: 3, inicio: firstOfMonth(hoje(), -1), encerrados: false };
-let loaded = false;
-let fichaId = null, editId = null;
+let wired = false;
+let fichaId = null;
 
-// ---------- dados ----------
-function norm(c){
-  c.meses = Math.max(1, parseInt(c.meses, 10) || 3);
-  c.mensal = +c.mensal || 0;
-  c.ciclos = Array.isArray(c.ciclos) ? c.ciclos : [];
-  while(c.ciclos.length < c.meses) c.ciclos.push({});
-  c.ciclos.length = c.meses;
-  c.ciclos = c.ciclos.map(x => x || {});
-  return c;
-}
-const get = id => clientes.find(c => c.id === id);
-
-async function save(){
-  try{
-    await setDoc(CICLOS_DOC, { clientes }, { merge: true });
-  }catch(err){
-    toast('Não foi possível guardar — sem ligação?', true);
-  }
+// ---------- clientes → ciclos ----------
+function nomeCliente(data){
+  const pessoal = `${data.firstName || ''} ${data.lastName || ''}`.trim();
+  const empresa = (data.company || '').trim();
+  return empresa || pessoal || data.email || 'Cliente';
 }
 
-function ciclos(c){
-  return calcularCiclos({ inicio: c.pagamento1, meses: c.meses, mensal: c.mensal, ciclos: c.ciclos }, hoje());
+// Um projeto mensal → os seus 3 ciclos, já com o valor e o projeto de cada um.
+function ciclosDoProjeto(p){
+  const HOJE = hoje();
+  const venc = projectPaymentDates(p).filter(Boolean);
+  const inicio = venc[0] || p.contractStart;
+  if(!inicio) return [];
+  const pagos = p.paymentsPaid || [];
+  const valores = p.paymentAmounts || [];
+  const unico = venc.length === 1; // pagamento único para os 3 meses
+  const total = unico ? (Number(valores[0]) || packPriceNumber(p.pack) * MONTHLY_BATCH_MONTHS) : 0;
+  const slots = recordingSlots(p);
+  const recs = p.recordingDates || [];
+  const entregas = projectDeliveryDates(p).filter(d => d && d <= HOJE).sort();
+  const feito = workflowDoneSet(p);
+
+  // 1.ª passagem só para saber onde começa cada mês.
+  const base = calcularCiclos({ inicio, meses: MONTHLY_BATCH_MONTHS, mensal: 0, vencimentos: venc }, HOJE);
+  const ciclos = base.map((b, i) => {
+    const gravs = slots.filter(s => s.month === i + 1).map(s => recs[s.idx]).filter(Boolean).sort();
+    const gravacao = gravs[gravs.length - 1] || '';
+    let entrega = '';
+    if(gravacao){
+      entrega = entregas.find(d => d >= gravacao && d <= b.fim) || '';
+      // Edição marcada como feita mas sem data de entrega: conta como entregue no prazo.
+      if(!entrega && feito.has(`m${i + 1}-edit`)){
+        const prazo = addUteis(gravacao, CFG.diasUteisEntrega);
+        entrega = prazo <= HOJE ? prazo : HOJE;
+      }
+    }
+    const pago = unico ? !!pagos[0] : !!pagos[i];
+    return { pago: pago ? b.ini : '', gravacao, entrega, gravs };
+  });
+  const cs = calcularCiclos({ inicio, meses: MONTHLY_BATCH_MONTHS, mensal: 0, vencimentos: venc, ciclos }, HOJE);
+  return cs.map((cy, i) => Object.assign(cy, {
+    mensal: unico ? total / MONTHLY_BATCH_MONTHS : (Number(valores[i]) || packPriceNumber(p.pack)),
+    gravs: ciclos[i].gravs,
+    projeto: p.name || 'Projeto',
+    pid: p.id,
+    n: i + 1
+  }));
 }
+
+async function carregar(){
+  const snap = await getDocs(collection(db, 'clients'));
+  const out = [];
+  snap.docs.forEach(d => {
+    const data = d.data();
+    if((data.email || '') === ADMIN_EMAIL || data.deactivated) return;
+    const projetos = getProjects(data).filter(isMonthlyWorkflow);
+    const cs = projetos.flatMap(ciclosDoProjeto).sort((a, b) => (a.ini < b.ini ? -1 : a.ini > b.ini ? 1 : 0));
+    if(!cs.length) return;
+    out.push({ id: d.id, nome: nomeCliente(data), cs, projetos });
+  });
+  linhas = out;
+}
+
 function resumo(c){
   const HOJE = hoje();
-  const cs = ciclos(c), fim = cs[cs.length - 1].fim, atrasos = cs.filter(x => x.estado === 'atraso');
+  const cs = c.cs, fim = cs.reduce((m, x) => (x.fim > m ? x.fim : m), cs[0].fim);
+  const atrasos = cs.filter(x => x.estado === 'atraso');
+  const atual = cs.find(x => x.ini <= HOJE && HOJE <= x.fim) || cs.find(x => x.ini > HOJE) || cs[cs.length - 1];
   return {
-    cs, fim, atrasos,
+    cs, fim, atrasos, atual,
     ativo: HOJE <= fim || atrasos.length > 0,
-    divida: atrasos.length * c.mensal,
-    teveAtraso: cs.some(x => x.estado === 'atraso' || x.estado === 'pago-atraso')
+    divida: atrasos.reduce((s, x) => s + x.mensal, 0)
   };
 }
-const multa = (c, n = 1) => c.mensal * CFG.multaPct / 100 * n;
+const multa = v => v * CFG.multaPct / 100;
 
 // ---------- resumo ----------
 function renderResumo(){
   const HOJE = hoje(), ym = HOJE.slice(0, 7);
   let rec = 0, atr = 0, ca = 0, prox = 0, pn = 0, ativos = 0;
-  clientes.forEach(c => {
+  linhas.forEach(c => {
     const r = resumo(c);
     if(r.ativo) ativos++;
     let a = false;
     r.cs.forEach(cy => {
-      if(cy.pago && cy.pago.slice(0, 7) === ym) rec += c.mensal;
-      if(cy.estado === 'atraso'){ atr += c.mensal; a = true; }
-      if(cy.estado === 'hoje' || cy.estado === 'a-vencer'){ prox += c.mensal; pn++; }
+      if(cy.pago && cy.pago.slice(0, 7) === ym) rec += cy.mensal;
+      if(cy.estado === 'atraso'){ atr += cy.mensal; a = true; }
+      if(cy.estado === 'hoje' || cy.estado === 'a-vencer'){ prox += cy.mensal; pn++; }
     });
     if(a) ca++;
   });
@@ -123,45 +174,38 @@ function renderTL(){
   if(nowIn) ruler += `<div class="cc-now" style="left:${nowX}%;top:auto;height:6px"></div><div class="cc-nowlab" style="left:${nowX}%">hoje ${dm(HOJE)}</div>`;
 
   let html = `<div class="cc-row is-ruler"><div class="cc-head">Clientes</div><div class="cc-lane">${ruler}</div></div>`;
-  const lista = clientes.map(c => ({ c, r: resumo(c) }))
+  const lista = linhas.map(c => ({ c, r: resumo(c) }))
     .filter(x => view.encerrados || x.r.ativo)
     .sort((a, b) => (b.r.atrasos.length - a.r.atrasos.length) || a.c.nome.localeCompare(b.c.nome, 'pt'));
 
   if(!lista.length){
-    html += `<div class="cc-vazio"><p>${clientes.length ? 'Nenhuma cliente ativa neste momento.' : 'Ainda não há clientes. Adicione a primeira para ver os ciclos.'}</p><button type="button" class="btn-mini" data-cc-acao="novo">+ Nova cliente</button></div>`;
+    html += `<div class="cc-vazio"><p>${linhas.length ? 'Nenhuma cliente com plano mensal a decorrer. Marque "Mostrar encerrados" para ver as anteriores.' : 'Nenhuma cliente com pacote mensal. Os planos mensais criados nos projetos aparecem aqui.'}</p></div>`;
     tl.innerHTML = html;
     return;
   }
   lista.forEach(({ c, r }) => {
-    const dia = P(c.pagamento1).getDate();
     let lane = grid + nowLine;
     r.cs.forEach(cy => {
       const s = seg(cy.ini, addDays(cy.fim, 1));
       if(!s) return;
-      const tip = `${c.nome}, mês ${cy.i + 1} de ${c.meses}: ${dm(cy.ini)} a ${dm(cy.fim)}, ${estadoTexto(cy)}`;
-      lane += `<button type="button" class="cc-clip st-${cy.estado}" style="left:${s[0]}%;width:${s[1]}%" data-cc-ficha="${esc(c.id)}" title="${esc(tip)}" aria-label="${esc(tip)}"><span class="cc-c1">Mês ${cy.i + 1} de ${c.meses}</span><span class="cc-c2">${estadoTexto(cy)}</span></button>`;
-      const bEnd = cy.estado === 'atraso' ? addDays(HOJE, 1) : (cy.estado === 'pago-atraso' ? cy.pago : null);
-      if(bEnd){
-        const b = seg(cy.venc, bEnd);
-        if(b) lane += `<div class="cc-blk${cy.estado === 'atraso' ? '' : ' is-soft'}" style="left:${b[0]}%;width:${b[1]}%"></div>`;
+      const tip = `${c.nome} · ${cy.projeto}, mês ${cy.n} de ${MONTHLY_BATCH_MONTHS}: ${dm(cy.ini)} a ${dm(cy.fim)}, ${estadoTxt(cy)}`;
+      lane += `<button type="button" class="cc-clip st-${cy.estado}" style="left:${s[0]}%;width:${s[1]}%" data-cc-ficha="${esc(c.id)}" title="${esc(tip)}" aria-label="${esc(tip)}"><span class="cc-c1">Mês ${cy.n} de ${MONTHLY_BATCH_MONTHS}</span><span class="cc-c2">${estadoTxt(cy)}</span></button>`;
+      if(cy.estado === 'atraso'){
+        const b = seg(cy.venc, addDays(HOJE, 1));
+        if(b) lane += `<div class="cc-blk" style="left:${b[0]}%;width:${b[1]}%"></div>`;
       }
-      if(cy.pago){
-        if(inWin(cy.pago)) lane += `<i class="cc-pay" style="left:${pos(cy.pago) + hd}%"></i>`;
-        if(cy.estado === 'pago-atraso' && inWin(cy.venc)) lane += `<i class="cc-pay is-aberto" style="left:${pos(cy.venc) + hd}%"></i>`;
-      }else if(inWin(cy.venc)){
-        lane += `<i class="cc-pay ${cy.estado === 'atraso' ? 'is-falta' : 'is-aberto'}" style="left:${pos(cy.venc) + hd}%"></i>`;
-      }
+      if(inWin(cy.venc)) lane += `<i class="cc-pay${cy.pago ? '' : cy.estado === 'atraso' ? ' is-falta' : ' is-aberto'}" style="left:${pos(cy.venc) + hd}%"></i>`;
       if(cy.gravacao){
         const w = seg(addDays(cy.gravacao, 1), addDays(cy.entregaAte, 1));
         if(w) lane += `<div class="cc-prod is-work" style="left:${w[0]}%;width:${w[1]}%"></div>`;
         const rv = seg(addDays(cy.entrega || cy.entregaAte, 1), addDays(cy.revisaoAte, 1));
         if(rv) lane += `<div class="cc-prod ${cy.estoura ? 'is-over' : 'is-rev'}" style="left:${rv[0]}%;width:${rv[1]}%"></div>`;
-        if(inWin(cy.gravacao)) lane += `<i class="cc-rec" style="left:${pos(cy.gravacao) + hd}%"></i>`;
+        cy.gravs.forEach(g => { if(inWin(g)) lane += `<i class="cc-rec" style="left:${pos(g) + hd}%"></i>`; });
         if(cy.entrega && inWin(cy.entrega)) lane += `<i class="cc-del" style="left:${pos(cy.entrega) + hd}%"></i>`;
       }
     });
-    const n = r.atrasos.length;
-    html += `<div class="cc-row"><button type="button" class="cc-head" data-cc-ficha="${esc(c.id)}"><span class="cc-nome">${esc(c.nome)}</span><span class="cc-sub">${eur(c.mensal)} por mês<br>vence dia ${dia}</span>${n ? `<span class="cc-pill">${n} ${n === 1 ? 'mês' : 'meses'} em atraso</span>` : ''}</button><div class="cc-lane">${lane}</div></div>`;
+    const n = r.atrasos.length, at = r.atual;
+    html += `<div class="cc-row"><button type="button" class="cc-head" data-cc-ficha="${esc(c.id)}"><span class="cc-nome">${esc(c.nome)}</span><span class="cc-sub">${eur(at.mensal)} por mês<br>vence dia ${P(at.venc).getDate()}</span>${n ? `<span class="cc-pill">${n} ${n === 1 ? 'mês' : 'meses'} em atraso</span>` : ''}</button><div class="cc-lane">${lane}</div></div>`;
   });
   tl.innerHTML = html;
   // Traz o "hoje" para a vista quando a janela não o mostra de início (telemóvel).
@@ -175,18 +219,18 @@ function renderTL(){
 // ---------- precisa de atenção ----------
 function renderAtencao(){
   const HOJE = hoje(), itens = [];
-  clientes.forEach(c => {
+  linhas.forEach(c => {
     const r = resumo(c);
     if(!r.ativo) return;
     const nome = `<strong>${esc(c.nome)}</strong>`;
     r.cs.forEach(cy => {
-      const m = `mês ${cy.i + 1}`;
-      if(cy.estado === 'atraso') itens.push({ p: 0, t: 'late', id: c.id, h: `${nome}: ${m} venceu em ${dm(cy.venc)} e está em atraso há ${dias(cy.atrasoDias)} (${eur(c.mensal)}).` });
-      else if(cy.estado === 'hoje') itens.push({ p: 1, t: 'pay', id: c.id, h: `${nome}: ${m} vence hoje (${eur(c.mensal)}).` });
-      else if(cy.estado === 'a-vencer') itens.push({ p: 2, t: 'pay', id: c.id, h: `${nome}: ${m} vence em ${dm(cy.venc)}, daqui a ${dias(cy.faltam)} (${eur(c.mensal)}).` });
+      const m = `mês ${cy.n}`;
+      if(cy.estado === 'atraso') itens.push({ p: 0, t: 'late', id: c.id, h: `${nome}: ${m} venceu em ${dm(cy.venc)} e está em atraso há ${dias(cy.atrasoDias)} (${eur(cy.mensal)}).` });
+      else if(cy.estado === 'hoje') itens.push({ p: 1, t: 'pay', id: c.id, h: `${nome}: ${m} vence hoje (${eur(cy.mensal)}).` });
+      else if(cy.estado === 'a-vencer') itens.push({ p: 2, t: 'pay', id: c.id, h: `${nome}: ${m} vence em ${dm(cy.venc)}, daqui a ${dias(cy.faltam)} (${eur(cy.mensal)}).` });
       const corrente = cy.ini <= HOJE && HOJE <= cy.fim;
       if(corrente && cy.pago && !cy.gravacao) itens.push({ p: 3, t: '', id: c.id, h: `${nome}: ${m} pago, gravação ainda por marcar. O mês termina em ${dm(cy.fim)}.` });
-      if(cy.gravacao && cy.gravacaoAntesDoPagamento && cy.estado !== 'pago') itens.push({ p: 3, t: 'late', id: c.id, h: `${nome}: gravação do ${m} marcada antes do pagamento.` });
+      if(cy.gravacao && !cy.pago && cy.gravs[0] < HOJE) itens.push({ p: 3, t: 'late', id: c.id, h: `${nome}: gravação do ${m} feita antes do pagamento.` });
       if(cy.gravacao && !cy.entrega && cy.gravacao <= HOJE){
         const f = diff(HOJE, cy.entregaAte);
         if(f <= 3) itens.push({ p: f < 0 ? 0 : 2, t: f < 0 ? 'late' : '', id: c.id, h: `${nome}: entrega do ${m}${f < 0 ? ` passou do prazo (${dm(cy.entregaAte)}).` : ` até ${dm(cy.entregaAte)}.`}` });
@@ -194,7 +238,7 @@ function renderAtencao(){
       if(cy.estoura && cy.fim >= HOJE) itens.push({ p: 3, t: '', id: c.id, h: `${nome}: as revisões do ${m} vão até ${dm(cy.revisaoAte)}, depois do fim do mês (${dm(cy.fim)}).` });
     });
     const fr = diff(HOJE, r.fim);
-    if(!r.atrasos.length && fr >= 0 && fr <= 21) itens.push({ p: 4, t: '', id: c.id, h: `${nome}: contrato termina em ${dm(r.fim)}. Hora de falar da renovação.` });
+    if(!r.atrasos.length && fr >= 0 && fr <= 21) itens.push({ p: 4, t: '', id: c.id, h: `${nome}: plano termina em ${dm(r.fim)}. Hora de falar da renovação.` });
   });
   itens.sort((a, b) => a.p - b.p);
   el('ccAtencao').innerHTML = itens.length
@@ -204,181 +248,80 @@ function renderAtencao(){
 
 function render(){ renderResumo(); renderTL(); renderAtencao(); }
 
-// ---------- ficha da cliente ----------
+// ---------- ficha da cliente (só leitura) ----------
 function abrirFicha(id){
   fichaId = id;
-  renderFicha();
-  const dlg = el('ccDlgFicha');
+  const c = linhas.find(x => x.id === id), dlg = el('ccDlgFicha');
+  if(!c) return;
+  const r = resumo(c);
+  let h = `<div class="cc-dlg-h"><h3 id="ccFichaNome">${esc(c.nome)}</h3><p>Plano mensal até ${dmy(r.fim)}. Pagamentos, gravações e entregas registam-se no projeto.</p></div><div class="cc-dlg-b">`;
+  if(r.atrasos.length){
+    const na = r.atrasos.length, mt = r.atrasos.reduce((s, x) => s + multa(x.mensal), 0);
+    h += `<div class="cc-divida"><strong>Em aberto: ${eur(r.divida + mt)}</strong>, sendo ${eur(r.divida)} de ${na} ${na === 1 ? 'mensalidade' : 'mensalidades'} e ${eur(mt)} de multa (${CFG.multaPct}% de cada mensalidade atrasada).</div>`;
+  }
+  c.projetos.forEach(p => {
+    const cs = r.cs.filter(x => x.pid === p.id);
+    if(!cs.length) return;
+    h += `<div class="cc-proj-h"><strong>${esc(p.name || 'Projeto')}</strong><button type="button" class="btn-mini" data-cc-projeto="${esc(p.id)}">Abrir projeto</button></div>`;
+    cs.forEach(cy => {
+      h += `<section class="cc-cy"><div class="cc-cy-h"><strong>Mês ${cy.n}</strong><span class="cc-per">${dm(cy.ini)} a ${dm(cy.fim)}, vence ${dm(cy.venc)} · ${eur(cy.mensal)}</span><span class="cc-badge st-${cy.estado}">${estadoTxt(cy)}</span></div>`;
+      const linha = [];
+      linha.push(cy.gravs.length ? `Gravação ${cy.gravs.map(dm).join(', ')}` : 'Gravação por marcar');
+      if(cy.gravacao) linha.push(cy.entrega ? `entregue ${dm(cy.entrega)}` : `entrega até ${dm(cy.entregaAte)} (${CFG.diasUteisEntrega} dias úteis)`, `revisões até ${dm(cy.revisaoAte)}`);
+      h += `<p class="cc-calc">${linha.join(' · ')}.</p>`;
+      if(cy.estoura) h += `<p class="cc-aviso">As revisões passam do fim do mês (${dm(cy.fim)}).</p>`;
+      if(cy.entrega && cy.entrega > cy.entregaAte) h += `<p class="cc-aviso">Entregue ${dias(diff(cy.entregaAte, cy.entrega))} depois do prazo.</p>`;
+      h += '</section>';
+    });
+  });
+  h += `</div><div class="cc-dlg-f"><button type="button" class="btn-mini is-primary" data-cc-ficha-acao="fechar">Fechar</button></div>`;
+  el('ccFicha').innerHTML = h;
   if(!dlg.open) dlg.showModal();
 }
-function renderFicha(){
-  const c = get(fichaId), dlg = el('ccDlgFicha');
-  if(!c){ dlg.close(); return; }
-  const r = resumo(c);
-  let h = `<div class="cc-dlg-h"><h3 id="ccFichaNome">${esc(c.nome)}</h3><p>${eur(c.mensal)} por mês, ${c.meses} meses. ${c.assinatura ? `Assinado em ${dmy(c.assinatura)}. ` : ''}Primeiro pagamento em ${dmy(c.pagamento1)}, contrato até ${dmy(r.fim)}.</p>${c.notas ? `<p>${esc(c.notas)}</p>` : ''}</div><div class="cc-dlg-b">`;
-  if(r.atrasos.length){
-    const na = r.atrasos.length;
-    h += `<div class="cc-divida"><strong>Em aberto: ${eur(r.divida + multa(c, na))}</strong>, sendo ${eur(r.divida)} de ${na} ${na === 1 ? 'mensalidade' : 'mensalidades'} e ${eur(multa(c, na))} de multa (${CFG.multaPct}% de cada mensalidade atrasada, ${eur(multa(c))} cada).</div>`;
-  }else if(r.teveAtraso){
-    const np = r.cs.filter(x => x.estado === 'pago-atraso').length;
-    h += `<div class="cc-divida">${np} ${np === 1 ? 'mensalidade paga' : 'mensalidades pagas'} com atraso neste contrato. Multa devida: ${eur(multa(c, np))} (${eur(multa(c))} por mensalidade).</div>`;
+
+async function abrirProjeto(clientId, projectId){
+  el('ccDlgFicha').close();
+  try{
+    const snap = await getDoc(doc(db, 'clients', clientId));
+    if(!snap.exists()){ toast('Este cliente já não existe.', true); return; }
+    loadAdminEdit(clientId, snap.data());
+    openProject(projectId);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }catch(err){
+    toast('Não foi possível abrir o projeto.', true);
   }
-  r.cs.forEach(cy => {
-    h += `<section class="cc-cy"><div class="cc-cy-h"><strong>Mês ${cy.i + 1}</strong><span class="cc-per">${dm(cy.ini)} a ${dm(cy.fim)}, vence ${dm(cy.venc)}</span><span class="cc-badge st-${cy.estado}">${estadoTexto(cy)}</span></div><div class="cc-cy-g">` +
-      `<div class="field"><label>Pago em</label><span class="cc-inl"><input type="date" data-cc-i="${cy.i}" data-cc-f="pago" value="${cy.pago}" aria-label="Mês ${cy.i + 1}: pago em">${cy.pago ? '' : `<button type="button" class="btn-mini" data-cc-hoje="${cy.i}">Hoje</button>`}</span></div>` +
-      `<div class="field"><label>Gravação</label><input type="date" data-cc-i="${cy.i}" data-cc-f="gravacao" value="${cy.gravacao}" aria-label="Mês ${cy.i + 1}: gravação"></div>` +
-      `<div class="field"><label>Entrega feita em</label><input type="date" data-cc-i="${cy.i}" data-cc-f="entrega" value="${cy.entrega}" aria-label="Mês ${cy.i + 1}: entrega feita em"></div></div>`;
-    if(cy.gravacao){
-      h += `<p class="cc-calc">Entrega até ${dm(cy.entregaAte)} (${CFG.diasUteisEntrega} dias úteis). Revisões até ${dm(cy.revisaoAte)}.</p>`;
-      if(cy.estoura) h += `<p class="cc-aviso">As revisões passam do fim do mês (${dm(cy.fim)}).</p>`;
-      if(cy.gravacaoAntesDoPagamento && cy.estado !== 'pago') h += '<p class="cc-aviso">Gravação marcada antes do pagamento.</p>';
-      if(cy.entrega && cy.entrega > cy.entregaAte) h += `<p class="cc-aviso">Entregue ${dias(diff(cy.entregaAte, cy.entrega))} depois do prazo.</p>`;
-    }
-    h += '</section>';
-  });
-  h += `</div><div class="cc-dlg-f"><button type="button" class="btn-mini cc-esq" data-cc-ficha-acao="editar">Editar contrato</button><button type="button" class="btn-mini" data-cc-ficha-acao="renovar">Renovar por mais 3 meses</button><button type="button" class="btn-mini is-primary" data-cc-ficha-acao="fechar">Fechar</button></div>`;
-  el('ccFicha').innerHTML = h;
-}
-
-// ---------- formulário (nova cliente / editar contrato) ----------
-function abrirForm(id){
-  editId = id || null;
-  const c = id ? get(id) : null;
-  el('ccFormTit').textContent = c ? 'Editar contrato' : 'Nova cliente';
-  el('ccFNome').value = c ? c.nome : '';
-  el('ccFMensal').value = c ? c.mensal : '';
-  el('ccFMeses').value = c ? c.meses : 3;
-  el('ccFAss').value = c ? (c.assinatura || '') : '';
-  el('ccFPag').value = c ? c.pagamento1 : hoje();
-  el('ccFNotas').value = c ? (c.notas || '') : '';
-  el('ccFRemover').hidden = !c;
-  el('ccDlgForm').showModal();
-  el('ccFNome').focus();
-}
-
-// ---------- copiar / importar ----------
-function abrirDados(){
-  el('ccDadosTxt').value = JSON.stringify(clientes, null, 2);
-  el('ccDadosMsg').textContent = '';
-  el('ccDlgDados').showModal();
 }
 
 // ---------- eventos (ligados uma vez) ----------
 function wire(){
-  const root = el('ccRoot');
-
-  root.addEventListener('click', (e) => {
+  el('ccRoot').addEventListener('click', (e) => {
     const ficha = e.target.closest('[data-cc-ficha]');
     if(ficha){ abrirFicha(ficha.dataset.ccFicha); return; }
-    if(e.target.closest('[data-cc-acao="novo"]')){ abrirForm(); return; }
     const jan = e.target.closest('[data-cc-jan]');
     if(jan){ view.janela = +jan.dataset.ccJan; renderTL(); return; }
     if(e.target.closest('#ccPrev')){ view.inicio = addMonthsAnchor(view.inicio, -1); renderTL(); return; }
     if(e.target.closest('#ccNext')){ view.inicio = addMonthsAnchor(view.inicio, 1); renderTL(); return; }
-    if(e.target.closest('#ccHoje')){ view.inicio = firstOfMonth(hoje(), -1); renderTL(); return; }
-    if(e.target.closest('#ccDados')) abrirDados();
+    if(e.target.closest('#ccHoje')){ view.inicio = firstOfMonth(hoje(), -1); renderTL(); }
   });
   el('ccEncerrados').addEventListener('change', (e) => { view.encerrados = e.target.checked; renderTL(); });
 
-  // Ficha
-  const dlgFicha = el('ccDlgFicha');
-  dlgFicha.addEventListener('change', (e) => {
-    const t = e.target;
-    if(!t.dataset || !t.dataset.ccF) return;
-    get(fichaId).ciclos[+t.dataset.ccI][t.dataset.ccF] = t.value;
-    save(); render(); renderFicha();
-  });
-  dlgFicha.addEventListener('click', (e) => {
-    if(e.target === dlgFicha){ dlgFicha.close(); return; }
-    const b = e.target.closest('button');
-    if(!b) return;
-    const c = get(fichaId);
-    if(b.dataset.ccHoje != null){ c.ciclos[+b.dataset.ccHoje].pago = hoje(); save(); render(); renderFicha(); }
-    else if(b.dataset.ccFichaAcao === 'fechar') dlgFicha.close();
-    else if(b.dataset.ccFichaAcao === 'renovar'){ c.meses += 3; norm(c); save(); render(); renderFicha(); }
-    else if(b.dataset.ccFichaAcao === 'editar'){ dlgFicha.close(); abrirForm(c.id); }
-  });
-
-  // Formulário
-  const dlgForm = el('ccDlgForm');
-  el('ccForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const nome = el('ccFNome').value.trim(), pag = el('ccFPag').value;
-    if(!nome || !pag) return;
-    const dados = {
-      nome, mensal: +el('ccFMensal').value || 0, meses: parseInt(el('ccFMeses').value, 10) || 3,
-      assinatura: el('ccFAss').value, pagamento1: pag, notas: el('ccFNotas').value.trim()
-    };
-    if(editId){
-      const c = get(editId), old = c.pagamento1;
-      Object.assign(c, dados);
-      if(c.ciclos[0] && c.ciclos[0].pago === old) c.ciclos[0].pago = pag;
-      norm(c);
-    }else{
-      clientes.push(norm({ id: uid(), ciclos: [{ pago: pag <= hoje() ? pag : '' }], ...dados }));
-    }
-    dlgForm.close();
-    save(); render();
-  });
-  el('ccFCancelar').addEventListener('click', () => dlgForm.close());
-  el('ccFRemover').addEventListener('click', () => {
-    const c = get(editId);
-    if(c && confirm(`Remover ${c.nome}? Isto apaga todos os registos desta cliente.`)){
-      clientes = clientes.filter(x => x.id !== editId);
-      dlgForm.close();
-      save(); render();
-    }
-  });
-
-  // Copiar / importar
-  const dlgDados = el('ccDlgDados'), txt = el('ccDadosTxt'), msg = el('ccDadosMsg');
-  el('ccDFechar').addEventListener('click', () => dlgDados.close());
-  el('ccDCopiar').addEventListener('click', () => {
-    txt.select();
-    const fallback = () => {
-      let ok = false;
-      try{ ok = document.execCommand('copy'); }catch(e){ /* ignore */ }
-      msg.textContent = ok ? 'Dados copiados.' : 'Selecione o texto e copie manualmente.';
-    };
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(txt.value).then(() => { msg.textContent = 'Dados copiados.'; }, fallback);
-    }else fallback();
-  });
-  el('ccDImportar').addEventListener('click', () => {
-    try{
-      const arr = JSON.parse(txt.value);
-      if(!Array.isArray(arr)) throw 0;
-      arr.forEach(c => { if(!c || !c.nome || !c.pagamento1) throw 0; if(!c.id) c.id = uid(); });
-      if(clientes.length && !confirm(`Substituir as ${clientes.length} clientes atuais pelas ${arr.length} importadas?`)) return;
-      clientes = arr.map(norm);
-      save(); render();
-      msg.textContent = `Importadas ${arr.length} clientes.`;
-    }catch(e){
-      msg.textContent = 'Não foi possível importar: o texto precisa ser a lista copiada desta página.';
-    }
-  });
-  el('ccDApagar').addEventListener('click', () => {
-    if(confirm('Apagar todas as clientes da linha do tempo?')){
-      clientes = [];
-      save(); render();
-      txt.value = '[]';
-      msg.textContent = 'Tudo apagado.';
-    }
+  const dlg = el('ccDlgFicha');
+  dlg.addEventListener('click', (e) => {
+    if(e.target === dlg){ dlg.close(); return; }
+    const proj = e.target.closest('[data-cc-projeto]');
+    if(proj){ abrirProjeto(fichaId, proj.dataset.ccProjeto); return; }
+    if(e.target.closest('[data-cc-ficha-acao="fechar"]')) dlg.close();
   });
 }
 
-// Chamado pela Central sempre que a aba Timeline abre.
+// Chamado pela Central sempre que a aba Timeline abre — relê os clientes,
+// para refletir o que acabou de ser editado nos projetos.
 export async function loadCiclos(){
-  if(!loaded){
-    wire();
-    loaded = true;
-    try{
-      const snap = await getDoc(CICLOS_DOC);
-      const data = snap.exists() ? (snap.data() || {}) : {};
-      clientes = Array.isArray(data.clientes) ? data.clientes.map(norm) : [];
-    }catch(err){
-      toast('Não foi possível carregar a linha do tempo.', true);
-    }
+  if(!wired){ wire(); wired = true; }
+  try{
+    await carregar();
+  }catch(err){
+    toast('Não foi possível carregar os clientes.', true);
   }
   render();
 }

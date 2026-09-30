@@ -57,13 +57,20 @@ export function addUteis(s, n) { let c = s, k = 0; while (k < n) { c = addDays(c
  *   meses:   3
  *   mensal:  290
  *   ciclos:  [{ pago, gravacao, entrega }]  — um por mês, campos opcionais
+ *   vencimentos: ['AAAA-MM-DD', …]  — opcional: datas de vencimento já definidas
+ *                (as do projeto no portal); o que faltar segue a âncora.
  * }
  */
 export function calcularCiclos(plano, dataHoje = hoje(), cfg = CFG) {
   const out = [];
+  const vs = plano.vencimentos || [];
+  const inicioMes = (i) => vs[i] || addMonthsAnchor(plano.inicio, i);
   for (let i = 0; i < plano.meses; i++) {
-    const ini = addMonthsAnchor(plano.inicio, i);
-    const fim = addDays(addMonthsAnchor(plano.inicio, i + 1), -1);
+    const ini = inicioMes(i);
+    // O mês acaba na véspera do vencimento seguinte; sem vencimento definido
+    // para lá do último, conta um mês a partir dele.
+    const seguinte = vs[i + 1] || (vs[i] && i + 1 >= vs.length ? addMonthsAnchor(vs[i], 1) : inicioMes(i + 1));
+    const fim = seguinte > ini ? addDays(seguinte, -1) : ini;
     const r = (plano.ciclos && plano.ciclos[i]) || {};
     const cy = { i, ini, fim, venc: ini, pago: r.pago || '', gravacao: r.gravacao || '', entrega: r.entrega || '' };
 

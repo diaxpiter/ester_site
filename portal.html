@@ -250,8 +250,8 @@
     </div>
 
     <!-- ---------- TIMELINE ---------- -->
-    <!-- Ciclos mensais de cada cliente (js/admin-ciclos.js; regras em
-         js/ciclos-core.js; dados em Firestore dashboard/ciclos). -->
+    <!-- Ciclos mensais de cada cliente com pacote mensal, lidos dos projetos
+         (js/admin-ciclos.js; regras em js/ciclos-core.js). -->
     <div class="central-panel hidden" data-central-panel="timeline">
       <div class="cc" id="ccRoot">
         <div class="cc-resumo" id="ccResumo"></div>
@@ -268,7 +268,6 @@
             <button type="button" data-cc-jan="6" aria-pressed="false">6 meses</button>
           </div>
           <label class="cc-chk"><input type="checkbox" id="ccEncerrados"> Mostrar encerrados</label>
-          <button type="button" class="btn-mini cc-novo" data-cc-acao="novo">+ Nova cliente</button>
         </div>
 
         <div class="cc-scroll"><div class="cc-tl" id="ccTl"></div></div>
@@ -289,46 +288,9 @@
           <div id="ccAtencao"></div>
         </div>
 
-        <div class="cc-rodape">
-          <button type="button" class="cc-link" id="ccDados">Copiar ou importar dados</button>
-        </div>
-
         <!-- Ficha da cliente -->
         <dialog class="cc-dlg" id="ccDlgFicha" aria-labelledby="ccFichaNome"><div id="ccFicha"></div></dialog>
 
-        <!-- Nova cliente / editar contrato -->
-        <dialog class="cc-dlg" id="ccDlgForm" aria-labelledby="ccFormTit">
-          <form method="dialog" id="ccForm">
-            <div class="cc-dlg-h"><h3 id="ccFormTit">Nova cliente</h3></div>
-            <div class="cc-dlg-b">
-              <div class="field"><label for="ccFNome">Nome</label><input id="ccFNome" required autocomplete="off"></div>
-              <div class="field-row">
-                <div class="field"><label for="ccFMensal">Mensalidade (€)</label><input id="ccFMensal" type="number" min="0" step="5" required></div>
-                <div class="field"><label for="ccFMeses">Duração (meses)</label><input id="ccFMeses" type="number" min="1" max="36" value="3" required></div>
-                <div class="field"><label for="ccFAss">Assinatura do contrato</label><input id="ccFAss" type="date"></div>
-                <div class="field"><label for="ccFPag">Primeiro pagamento</label><input id="ccFPag" type="date" required><small class="cc-hint">Define o dia de vencimento de todos os meses.</small></div>
-              </div>
-              <div class="field"><label for="ccFNotas">Notas</label><textarea id="ccFNotas" rows="2"></textarea></div>
-            </div>
-            <div class="cc-dlg-f">
-              <button type="button" class="btn-mini cc-esq cc-perigo" id="ccFRemover" hidden>Remover cliente</button>
-              <button type="button" class="btn-mini" id="ccFCancelar">Cancelar</button>
-              <button type="submit" class="btn-mini is-primary">Guardar cliente</button>
-            </div>
-          </form>
-        </dialog>
-
-        <!-- Copiar / importar -->
-        <dialog class="cc-dlg" id="ccDlgDados" aria-labelledby="ccDadosTit">
-          <div class="cc-dlg-h"><h3 id="ccDadosTit">Copiar ou importar dados</h3><p>Copie para guardar uma cópia. Para importar (por exemplo, do ficheiro "Ciclos de clientes"), cole os dados e toque em Importar.</p></div>
-          <div class="cc-dlg-b"><textarea id="ccDadosTxt" class="cc-dados-txt" rows="12" spellcheck="false" aria-label="Dados em JSON"></textarea><p class="cc-calc" id="ccDadosMsg"></p></div>
-          <div class="cc-dlg-f">
-            <button type="button" class="btn-mini cc-esq cc-perigo" id="ccDApagar">Apagar tudo</button>
-            <button type="button" class="btn-mini" id="ccDCopiar">Copiar</button>
-            <button type="button" class="btn-mini is-primary" id="ccDImportar">Importar</button>
-            <button type="button" class="btn-mini" id="ccDFechar">Fechar</button>
-          </div>
-        </dialog>
       </div>
     </div>
   </section>
